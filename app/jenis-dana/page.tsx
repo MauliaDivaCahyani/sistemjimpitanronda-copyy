@@ -68,49 +68,67 @@ export default function JenisDanaPage() {
       j.deskripsi.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const handleAdd = () => {
-    const jenisDanaData: Omit<JenisDana, "id" | "createdAt" | "updatedAt"> = {
-      namaDana: formData.namaDana,
-      deskripsi: formData.deskripsi,
-      nominalDefault: Number.parseFloat(formData.nominalDefault) || 0,
-      periodeBayar: formData.periodeBayar,
-      isActive: formData.isActive,
-    }
-    createJenisDana(jenisDanaData)
-    setIsAddDialogOpen(false)
-    resetForm()
-  }
-
-  const handleEdit = (jenis: JenisDana) => {
-    setSelectedJenis(jenis)
-    setFormData({
-      namaDana: jenis.namaDana,
-      deskripsi: jenis.deskripsi,
-      nominalDefault: jenis.nominalDefault.toString(),
-      periodeBayar: jenis.periodeBayar,
-      isActive: jenis.isActive,
-    })
-    setIsEditDialogOpen(true)
-  }
-
-  const handleUpdate = () => {
-    if (selectedJenis) {
-      const jenisDanaData: Partial<JenisDana> = {
+  const handleAdd = async () => {
+    try {
+      const jenisDanaData: Omit<JenisDana, "id" | "createdAt" | "updatedAt"> = {
         namaDana: formData.namaDana,
         deskripsi: formData.deskripsi,
         nominalDefault: Number.parseFloat(formData.nominalDefault) || 0,
         periodeBayar: formData.periodeBayar,
         isActive: formData.isActive,
       }
-      updateJenisDana(selectedJenis.id, jenisDanaData)
-      setIsEditDialogOpen(false)
+      await createJenisDana(jenisDanaData)
+      await fetchJenisDana() // Refresh data setelah create
+      setIsAddDialogOpen(false)
       resetForm()
+    } catch (error) {
+      console.error("Error adding jenis dana:", error)
+      alert("Gagal menambahkan jenis dana!")
     }
   }
 
-  const handleDelete = (id: string) => {
+  const handleEdit = (jenis: JenisDana) => {
+    setSelectedJenis(jenis)
+    setFormData({
+      namaDana: jenis.namaDana || "",
+      deskripsi: jenis.deskripsi || "",
+      nominalDefault: (jenis.nominalDefault != null ? jenis.nominalDefault.toString() : "0"),
+      periodeBayar: jenis.periodeBayar || "harian",
+      isActive: jenis.isActive ?? true,
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const handleUpdate = async () => {
+    if (selectedJenis) {
+      try {
+        const jenisDanaData: Partial<JenisDana> = {
+          namaDana: formData.namaDana,
+          deskripsi: formData.deskripsi,
+          nominalDefault: Number.parseFloat(formData.nominalDefault) || 0,
+          periodeBayar: formData.periodeBayar,
+          isActive: formData.isActive,
+        }
+        await updateJenisDana(selectedJenis.id, jenisDanaData)
+        await fetchJenisDana() // Refresh data setelah update
+        setIsEditDialogOpen(false)
+        resetForm()
+      } catch (error) {
+        console.error("Error updating jenis dana:", error)
+        alert("Gagal memperbarui jenis dana!")
+      }
+    }
+  }
+
+  const handleDelete = async (id: string) => {
     if (confirm("Apakah Anda yakin ingin menghapus jenis dana ini?")) {
-      deleteJenisDana(id)
+      try {
+        await deleteJenisDana(id)
+        await fetchJenisDana() // Refresh data setelah delete
+      } catch (error) {
+        console.error("Error deleting jenis dana:", error)
+        alert("Gagal menghapus jenis dana!")
+      }
     }
   }
 

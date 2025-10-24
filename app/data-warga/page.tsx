@@ -66,8 +66,6 @@ export default function DataWargaPage() {
   const filteredWarga = warga.filter(
   (w) =>
     w.namaLengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    w.nik.includes(searchTerm) ||
-    w.nomorHp.includes(searchTerm) ||
     w.alamatRumah?.toLowerCase().includes(searchTerm.toLowerCase())
 )
 
@@ -168,7 +166,7 @@ export default function DataWargaPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Cari nama, NIK, atau alamat..."
+                placeholder="Cari nama atau alamat..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 sm:w-64 md:w-80"
@@ -218,20 +216,8 @@ export default function DataWargaPage() {
 
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center gap-2 text-sm">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span>{w.nomorHp}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
                         <span>{w.alamatRumah}</span>
-                      </div>
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">NIK: </span>
-                        <span className="font-mono">{w.nik}</span>
-                      </div>
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Jenis Kelamin: </span>
-                        <span>{w.jenisKelamin}</span>
                       </div>
                     </div>
 

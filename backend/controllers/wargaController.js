@@ -5,12 +5,22 @@ export const getAllWarga = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT w.id_warga AS id, w.nama_lengkap AS namaLengkap, w.nik, w.nomor_hp AS nomorHp,
-             w.jenis_kelamin AS jenisKelamin, w.status_aktif AS statusAktif, r.alamat AS alamatRumah, r.rt, r.rw
+             w.jenis_kelamin AS jenisKelaminDB, w.status_aktif AS statusAktif, 
+             r.alamat AS alamatRumah, r.rt, r.rw, w.id_rumah AS idRumah
       FROM warga w LEFT JOIN rumah r ON w.id_rumah = r.id_rumah
       ORDER BY w.id_warga DESC
     `);
-    res.json({ success: true, data: rows });
+    
+    // Mapping jenis kelamin dari database ke frontend
+    const mappedRows = rows.map(row => ({
+      ...row,
+      jenisKelamin: row.jenisKelaminDB === "L" ? "Laki-laki" : row.jenisKelaminDB === "P" ? "Perempuan" : row.jenisKelaminDB,
+      jenisKelaminDB: undefined // Remove the temporary field
+    }));
+    
+    res.json({ success: true, data: mappedRows });
   } catch (error) {
+    console.error("Error getting all warga:", error);
     res.status(500).json({ success: false, message: "Gagal mengambil data warga", error: error.message });
   }
 };
@@ -20,12 +30,23 @@ export const getWargaById = async (req, res) => {
     const { id } = req.params;
     const [rows] = await pool.query(`
       SELECT w.id_warga AS id, w.nama_lengkap AS namaLengkap, w.nik, w.nomor_hp AS nomorHp,
-             w.jenis_kelamin AS jenisKelamin, w.status_aktif AS statusAktif, w.id_rumah AS idRumah, r.alamat AS alamatRumah
+             w.jenis_kelamin AS jenisKelaminDB, w.status_aktif AS statusAktif, 
+             w.id_rumah AS idRumah, r.alamat AS alamatRumah
       FROM warga w LEFT JOIN rumah r ON w.id_rumah = r.id_rumah WHERE w.id_warga = ?
     `, [id]);
-    if (rows.length === 0) return res.status(404).json({ success: false, message: "Data warga tidak ditemukan" });
-    res.json({ success: true, data: rows[0] });
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Data warga tidak ditemukan" });
+    }
+    
+    // Mapping jenis kelamin dari database ke frontend
+    const warga = rows[0];
+    warga.jenisKelamin = warga.jenisKelaminDB === "L" ? "Laki-laki" : warga.jenisKelaminDB === "P" ? "Perempuan" : warga.jenisKelaminDB;
+    delete warga.jenisKelaminDB; // Remove temporary field
+    
+    res.json({ success: true, data: warga });
   } catch (error) {
+    console.error("Error getting warga by id:", error);
     res.status(500).json({ success: false, message: "Gagal mengambil warga", error: error.message });
   }
 };
@@ -33,12 +54,52 @@ export const getWargaById = async (req, res) => {
 export const createWarga = async (req, res) => {
   try {
     const { idRumah, namaLengkap, nik, nomorHp, jenisKelamin, statusAktif } = req.body;
-    if (!namaLengkap || !jenisKelamin) return res.status(400).json({ success: false, message: "namaLengkap dan jenisKelamin wajib diisi" });
-    const [result] = await pool.query("INSERT INTO warga (id_rumah, nama_lengkap, nik, nomor_hp, jenis_kelamin, status_aktif) VALUES (?, ?, ?, ?, ?, ?)",
-      [idRumah || null, namaLengkap, nik || null, nomorHp || null, jenisKelamin, statusAktif || "Aktif"]);
-    res.status(201).json({ success: true, message: "Data warga berhasil ditambahkan", data: { id: result.insertId } });
+    
+    // Debug logging
+    console.log("DEBUG CREATE WARGA - Data received:", { 
+      idRumah, namaLengkap, nik, nomorHp, jenisKelamin, statusAktif 
+    });
+    console.log("DEBUG CREATE WARGA - jenisKelamin value:", jenisKelamin);
+    console.log("DEBUG CREATE WARGA - jenisKelamin type:", typeof jenisKelamin);
+    
+    if (!namaLengkap || !jenisKelamin) {
+      console.log("DEBUG CREATE WARGA - Validation failed:", { namaLengkap, jenisKelamin });
+      return res.status(400).json({ success: false, message: "namaLengkap dan jenisKelamin wajib diisi" });
+    }
+    
+    // Mapping jenis kelamin dari frontend ke database
+    // Frontend: "Laki-laki" / "Perempuan" -> Database: "L" / "P"
+    let jenisKelaminDB;
+    if (jenisKelamin === "Laki-laki") {
+      jenisKelaminDB = "L";
+    } else if (jenisKelamin === "Perempuan") {
+      jenisKelaminDB = "P";
+    } else {
+      // Fallback jika nilai tidak sesuai
+      jenisKelaminDB = jenisKelamin === "L" || jenisKelamin === "P" ? jenisKelamin : "L";
+    }
+    
+    console.log("DEBUG CREATE WARGA - jenisKelamin mapped to DB:", jenisKelaminDB);
+    
+    const [result] = await pool.query(
+      "INSERT INTO warga (id_rumah, nama_lengkap, nik, nomor_hp, jenis_kelamin, status_aktif) VALUES (?, ?, ?, ?, ?, ?)",
+      [idRumah || null, namaLengkap, nik || null, nomorHp || null, jenisKelaminDB, statusAktif || "Aktif"]
+    );
+    
+    console.log("DEBUG CREATE WARGA - Insert result:", result);
+    
+    res.status(201).json({ 
+      success: true, 
+      message: "Data warga berhasil ditambahkan", 
+      data: { id: result.insertId } 
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Gagal menambahkan warga", error: error.message });
+    console.error("DEBUG CREATE WARGA - Error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Gagal menambahkan warga", 
+      error: error.message 
+    });
   }
 };
 
@@ -46,11 +107,30 @@ export const updateWarga = async (req, res) => {
   try {
     const { id } = req.params;
     const { idRumah, namaLengkap, nik, nomorHp, jenisKelamin, statusAktif } = req.body;
-    const [result] = await pool.query("UPDATE warga SET id_rumah = ?, nama_lengkap = ?, nik = ?, nomor_hp = ?, jenis_kelamin = ?, status_aktif = ?, updated_at = NOW() WHERE id_warga = ?",
-      [idRumah || null, namaLengkap, nik || null, nomorHp || null, jenisKelamin, statusAktif || "Aktif", id]);
-    if (result.affectedRows === 0) return res.status(404).json({ success: false, message: "Data warga tidak ditemukan" });
+    
+    // Mapping jenis kelamin dari frontend ke database
+    let jenisKelaminDB;
+    if (jenisKelamin === "Laki-laki") {
+      jenisKelaminDB = "L";
+    } else if (jenisKelamin === "Perempuan") {
+      jenisKelaminDB = "P";
+    } else {
+      // Fallback jika nilai tidak sesuai
+      jenisKelaminDB = jenisKelamin === "L" || jenisKelamin === "P" ? jenisKelamin : "L";
+    }
+    
+    const [result] = await pool.query(
+      "UPDATE warga SET id_rumah = ?, nama_lengkap = ?, nik = ?, nomor_hp = ?, jenis_kelamin = ?, status_aktif = ?, updated_at = NOW() WHERE id_warga = ?",
+      [idRumah || null, namaLengkap, nik || null, nomorHp || null, jenisKelaminDB, statusAktif || "Aktif", id]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: "Data warga tidak ditemukan" });
+    }
+    
     res.json({ success: true, message: "Data warga berhasil diperbarui" });
   } catch (error) {
+    console.error("Error updating warga:", error);
     res.status(500).json({ success: false, message: "Gagal memperbarui warga", error: error.message });
   }
 };

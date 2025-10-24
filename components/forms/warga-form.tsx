@@ -68,6 +68,11 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Debug logging untuk melihat data yang dikirim
+    console.log("DEBUG WARGA FORM - Data yang akan dikirim:", formData)
+    console.log("DEBUG WARGA FORM - Jenis Kelamin:", formData.jenisKelamin)
+    
     onSubmit(formData as any)
     onClose()
   }

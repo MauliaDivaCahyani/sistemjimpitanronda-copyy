@@ -91,6 +91,9 @@ CREATE TABLE jenis_dana (
     id_jenis_dana INT AUTO_INCREMENT PRIMARY KEY,
     nama_dana VARCHAR(100) NOT NULL,
     deskripsi TEXT,
+    nominal_default DECIMAL(12,2) DEFAULT 0,
+    periode_bayar ENUM('harian', 'mingguan', 'bulanan', 'tahunan') DEFAULT 'harian',
+    is_active BOOLEAN DEFAULT TRUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
