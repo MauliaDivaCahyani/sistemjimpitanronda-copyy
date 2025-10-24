@@ -13,7 +13,8 @@ import { ArrowLeft, Wallet, CheckCircle } from "lucide-react"
 import type { Warga, JenisDana } from "@/types/database"
 import { useRouter } from "next/navigation"
 import type { User } from "@/types/auth"
-import { getAllJenisDana } from "@/lib/database"
+import { getAllJenisDana, createTransaksi } from "@/lib/database"
+import { toast } from "@/hooks/use-toast"
 
 const nominalTemplates = [500, 1000, 2000, 5000, 10000]
 
@@ -27,6 +28,7 @@ export default function ScanBarcodePage() {
   const [isAllowed, setIsAllowed] = useState(false)
   const [jenisDanaList, setJenisDanaList] = useState<JenisDana[]>([])
   const [showScanner, setShowScanner] = useState(false)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -37,6 +39,7 @@ export default function ScanBarcodePage() {
       if (user.role !== "petugas") {
         router.replace("/dashboard")
       } else {
+        setCurrentUser(user)
         setIsAllowed(true)
       }
     } catch {
@@ -51,12 +54,16 @@ export default function ScanBarcodePage() {
         setJenisDanaList(Array.isArray(data) ? data : [])
       } catch (error) {
         console.error("Error fetching jenis dana:", error)
+        toast({
+          title: "Error",
+          description: "Gagal memuat jenis dana",
+          variant: "destructive",
+        })
       }
     }
-  
+
     fetchJenisDana()
   }, [])
-  
 
   const handleSelectJenisDana = (jenis: JenisDana) => {
     setSelectedJenisDana(jenis)
@@ -85,16 +92,30 @@ export default function ScanBarcodePage() {
   }
 
   const handleSubmitTransaction = async () => {
-    if (!selectedWarga || selectedNominal <= 0 || !selectedJenisDana) return
+    if (!selectedWarga || selectedNominal <= 0 || !selectedJenisDana || !currentUser) return
 
     setIsProcessing(true)
     try {
-      // Simulate API call to save transaction
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const transactionData = {
+        id_warga: selectedWarga.id,
+        id_jenis: selectedJenisDana.id,
+        id_user: currentUser.id,
+        tanggal_selor: new Date(),
+        waktu_input: new Date(),
+        nominal: selectedNominal,
+        status_jimpitan: "lunas" as const,
+      }
+
+      await createTransaksi(transactionData)
 
       setSuccess(
-        `Transaksi ${selectedJenisDana.namaDana} berhasil disimpan! Dana Rp ${selectedNominal.toLocaleString("id-ID")} dari ${selectedWarga.nama}`,
+        `Transaksi ${selectedJenisDana.namaDana} berhasil disimpan! Dana Rp ${selectedNominal.toLocaleString("id-ID")} dari ${selectedWarga.namaLengkap}`,
       )
+
+      toast({
+        title: "Berhasil",
+        description: "Transaksi berhasil disimpan",
+      })
 
       // Reset form after success
       setTimeout(() => {
@@ -107,6 +128,11 @@ export default function ScanBarcodePage() {
       }, 3000)
     } catch (error) {
       console.error("Error saving transaction:", error)
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan transaksi",
+        variant: "destructive",
+      })
     } finally {
       setIsProcessing(false)
     }
@@ -139,22 +165,22 @@ export default function ScanBarcodePage() {
                 <CardDescription>Pilih jenis dana yang akan diinput terlebih dahulu</CardDescription>
               </CardHeader>
               <CardContent>
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {jenisDanaList.map((jenis) => (
-                      <div
-                        key={jenis.id}
-                        onClick={() => handleSelectJenisDana(jenis)}
-                        className="cursor-pointer rounded-xl border border-gray-200 bg-gray-50 p-5 hover:bg-primary/10 transition-all duration-200 shadow-sm hover:shadow-md"
-                      >
-                        <h3 className="font-semibold text-gray-800 text-lg mb-1">{jenis.namaDana}</h3>
-                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{jenis.deskripsi}</p>
-                        <Badge className="bg-emerald-500/15 text-emerald-700 font-semibold">
-                          {formatCurrency(jenis.nominalDefault || 0)}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {jenisDanaList.map((jenis) => (
+                    <div
+                      key={jenis.id}
+                      onClick={() => handleSelectJenisDana(jenis)}
+                      className="cursor-pointer rounded-xl border border-gray-200 bg-gray-50 p-5 hover:bg-primary/10 transition-all duration-200 shadow-sm hover:shadow-md"
+                    >
+                      <h3 className="font-semibold text-gray-800 text-lg mb-1">{jenis.namaDana}</h3>
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{jenis.deskripsi}</p>
+                      <Badge className="bg-emerald-500/15 text-emerald-700 font-semibold">
+                        {formatCurrency(jenis.nominalDefault || 0)}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
             </Card>
           ) : (
             <>
@@ -173,12 +199,14 @@ export default function ScanBarcodePage() {
                         <Wallet className="h-5 w-5" />
                         Input Nominal Dana
                       </CardTitle>
-                      <CardDescription>Masukkan nominal dana yang disetor oleh {selectedWarga.nama}</CardDescription>
+                      <CardDescription>
+                        Masukkan nominal dana yang disetor oleh {selectedWarga.namaLengkap}
+                      </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                       <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
                         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold">
-                          {selectedWarga.nama
+                          {selectedWarga.namaLengkap
                             .split(" ")
                             .map((n) => n.charAt(0))
                             .join("")
@@ -186,8 +214,8 @@ export default function ScanBarcodePage() {
                             .slice(0, 2)}
                         </div>
                         <div>
-                          <h3 className="font-semibold">{selectedWarga.nama}</h3>
-                          <p className="text-sm text-muted-foreground">{selectedWarga.rumah?.alamat}</p>
+                          <h3 className="font-semibold">{selectedWarga.namaLengkap}</h3>
+                          <p className="text-sm text-muted-foreground">{selectedWarga.alamatRumah}</p>
                         </div>
                         <Badge variant="default" className="bg-green-500 ml-auto">
                           Aktif

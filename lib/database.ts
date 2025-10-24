@@ -28,7 +28,7 @@ async function apiRequest<T = any>(endpoint: string, options?: RequestInit): Pro
     return payload as T
   } catch (error) {
     console.error(`Failed to fetch ${API_BASE_URL}/${endpoint}:`, error)
-    throw new Error(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    throw new Error(`Network error: ${error instanceof Error ? error.message : "Unknown error"}`)
   }
 }
 
@@ -58,6 +58,7 @@ export async function getRumahById(id: string): Promise<Rumah> {
 export async function deleteRumah(id: string): Promise<void> {
   await apiRequest(`rumah/${id}`, { method: "DELETE" })
 }
+
 
 /* ==================== WARGA ==================== */
 export async function getAllWarga(): Promise<Warga[]> {
@@ -105,7 +106,6 @@ export async function createPetugas(data: any) {
   })
 }
 
-
 export async function updatePetugas(id: string, data: Partial<User>): Promise<any> {
   return apiRequest<any>(`petugas/${id}`, {
     method: "PUT",
@@ -123,7 +123,7 @@ export async function getAllJenisDana(): Promise<JenisDana[]> {
 }
 
 export async function createJenisDana(
-  data: Omit<JenisDana, "id" | "createdAt" | "updatedAt">
+  data: Omit<JenisDana, "id" | "createdAt" | "updatedAt">,
 ): Promise<JenisDana | any> {
   return apiRequest<any>("jenis-dana", {
     method: "POST",
@@ -142,7 +142,6 @@ export async function deleteJenisDana(id: string): Promise<void> {
   await apiRequest(`jenis-dana/${id}`, { method: "DELETE" })
 }
 
-
 /* ==================== KELOMPOK RONDA ==================== */
 export async function getAnggotaByKelompokId(id: string) {
   return apiRequest<any>(`kelompok-ronda/${id}/anggota`)
@@ -153,7 +152,7 @@ export async function getAllKelompokRonda(): Promise<KelompokRonda[]> {
 }
 
 export async function createKelompokRonda(
-  data: Omit<KelompokRonda, "id" | "createdAt" | "updatedAt">
+  data: Omit<KelompokRonda, "id" | "createdAt" | "updatedAt">,
 ): Promise<KelompokRonda | any> {
   return apiRequest<any>("kelompok-ronda", {
     method: "POST",
@@ -161,10 +160,7 @@ export async function createKelompokRonda(
   })
 }
 
-export async function updateKelompokRonda(
-  id: string,
-  data: Partial<KelompokRonda>
-): Promise<KelompokRonda | any> {
+export async function updateKelompokRonda(id: string, data: Partial<KelompokRonda>): Promise<KelompokRonda | any> {
   return apiRequest<any>(`kelompok-ronda/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
@@ -178,6 +174,23 @@ export async function deleteKelompokRonda(id: string): Promise<void> {
 /* ==================== TRANSAKSI ==================== */
 export async function getAllTransaksi(): Promise<Transaksi[]> {
   return apiRequest<Transaksi[]>("transaksi")
+}
+
+export async function createTransaksi(
+  data: Omit<Transaksi, "id" | "createdAt" | "updatedAt">,
+): Promise<Transaksi | any> {
+  return apiRequest<any>("transaksi", {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+}
+
+export async function getTransaksiById(id: string): Promise<Transaksi> {
+  return apiRequest<Transaksi>(`transaksi/${id}`)
+}
+
+export async function getTransaksiByWarga(id_warga: string): Promise<Transaksi[]> {
+  return apiRequest<Transaksi[]>(`transaksi/warga/${id_warga}`)
 }
 
 /* ==================== PRESENSI ==================== */

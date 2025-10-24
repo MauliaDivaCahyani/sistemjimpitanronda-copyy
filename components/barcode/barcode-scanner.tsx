@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { scanBarcode, parseBarcodeData } from "@/lib/barcode"
 import { getWargaByBarcode } from "@/lib/database"
-import { Camera, Scan, User, MapPin, Phone, AlertCircle, CheckCircle } from "lucide-react"
+import { Camera, Scan, User, MapPin, Phone, AlertCircle, CheckCircle, X } from "lucide-react"
 import type { Warga } from "@/types/database"
 
 interface BarcodeScannerProps {
@@ -22,23 +22,37 @@ export function BarcodeScanner({ onWargaFound }: BarcodeScannerProps) {
   const [scannedWarga, setScannedWarga] = useState<Warga | null>(null)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [showScanner, setShowScanner] = useState(false)
+  const scannerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    return () => {
+      const scannerElement = document.getElementById("qr-reader")
+      if (scannerElement) {
+        scannerElement.innerHTML = ""
+      }
+    }
+  }, [])
 
   const handleScanBarcode = async () => {
     setIsScanning(true)
     setError("")
     setSuccess("")
+    setShowScanner(true)
 
     try {
       const scannedCode = await scanBarcode()
       if (scannedCode) {
         await processBarcode(scannedCode)
       } else {
-        setError("Gagal memindai barcode. Silakan coba lagi.")
+        setError("Gagal memindai barcode. Silakan coba lagi atau gunakan input manual.")
       }
     } catch (err) {
       setError("Terjadi kesalahan saat memindai barcode.")
+      console.error("[v0] Scan error:", err)
     } finally {
       setIsScanning(false)
+      setShowScanner(false)
     }
   }
 
@@ -65,7 +79,7 @@ export function BarcodeScanner({ onWargaFound }: BarcodeScannerProps) {
       const warga = await getWargaByBarcode(barcodeData)
       if (warga) {
         setScannedWarga(warga)
-        setSuccess(`Data warga ditemukan: ${warga.nama}`)
+        setSuccess(`Data warga ditemukan: ${warga.namaLengkap}`)
         onWargaFound(warga)
       } else {
         setError("Data warga tidak ditemukan untuk barcode ini.")
@@ -93,26 +107,39 @@ export function BarcodeScanner({ onWargaFound }: BarcodeScannerProps) {
           <CardDescription>Scan barcode rumah untuk mencari data warga</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Camera Scanner */}
-          <div className="text-center space-y-4">
-            <div className="border-2 border-dashed border-border rounded-lg p-8">
-              <Camera className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">Arahkan kamera ke barcode rumah</p>
-              <Button onClick={handleScanBarcode} disabled={isScanning} size="lg">
-                {isScanning ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2"></div>
-                    Memindai...
-                  </>
-                ) : (
-                  <>
-                    <Camera className="h-4 w-4 mr-2" />
-                    Mulai Scan
-                  </>
-                )}
+          {/* QR Code Scanner Display */}
+          {showScanner && (
+            <div className="border-2 border-primary rounded-lg p-4 bg-black">
+              <div id="qr-reader" className="w-full"></div>
+              <Button onClick={() => setShowScanner(false)} variant="outline" className="w-full mt-4">
+                <X className="h-4 w-4 mr-2" />
+                Tutup Scanner
               </Button>
             </div>
-          </div>
+          )}
+
+          {/* Camera Scanner Button */}
+          {!showScanner && (
+            <div className="text-center space-y-4">
+              <div className="border-2 border-dashed border-border rounded-lg p-8">
+                <Camera className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-4">Arahkan kamera ke barcode rumah</p>
+                <Button onClick={handleScanBarcode} disabled={isScanning} size="lg">
+                  {isScanning ? (
+                    <>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2"></div>
+                      Memindai...
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="h-4 w-4 mr-2" />
+                      Mulai Scan
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Manual Input */}
           <div className="space-y-2">
@@ -161,7 +188,7 @@ export function BarcodeScanner({ onWargaFound }: BarcodeScannerProps) {
           <CardContent>
             <div className="flex items-start gap-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground text-xl font-bold">
-                {scannedWarga.nama
+                {scannedWarga.namaLengkap
                   .split(" ")
                   .map((n) => n.charAt(0))
                   .join("")
@@ -171,7 +198,7 @@ export function BarcodeScanner({ onWargaFound }: BarcodeScannerProps) {
 
               <div className="flex-1 space-y-3">
                 <div>
-                  <h3 className="text-xl font-semibold">{scannedWarga.nama}</h3>
+                  <h3 className="text-xl font-semibold">{scannedWarga.namaLengkap}</h3>
                   <Badge variant={scannedWarga.statusAktif ? "default" : "secondary"} className="bg-green-500">
                     {scannedWarga.statusAktif ? "Aktif" : "Tidak Aktif"}
                   </Badge>
@@ -184,7 +211,7 @@ export function BarcodeScanner({ onWargaFound }: BarcodeScannerProps) {
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>{scannedWarga.rumah?.alamat}</span>
+                    <span>{scannedWarga.alamatRumah}</span>
                   </div>
                   <div className="text-sm">
                     <span className="text-muted-foreground">NIK: </span>

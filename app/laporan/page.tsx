@@ -33,12 +33,8 @@ export default function LaporanPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [t, w, k] = await Promise.all([
-          getAllTransaksi(),
-          getAllWarga(),
-          getAllKelompokRonda(),
-        ])
-  
+        const [t, w, k] = await Promise.all([getAllTransaksi(), getAllWarga(), getAllKelompokRonda()])
+
         setTransaksi(Array.isArray(t) ? t : [])
         setWarga(Array.isArray(w) ? w : [])
         setKelompokRonda(Array.isArray(k) ? k : [])
@@ -48,7 +44,6 @@ export default function LaporanPage() {
     }
     fetchData()
   }, [])
-  
 
   // Filter data berdasarkan periode yang dipilih
   const getFilteredData = () => {
@@ -126,14 +121,14 @@ export default function LaporanPage() {
 
     warga.forEach((w) => {
       const rumahId = w.idRumah
-      const alamat = w.rumah?.alamat || "Alamat tidak tersedia"
-      const rt = w.rumah?.rt || "-"
-      const rw = w.rumah?.rw || "-"
+      const alamat = w.alamatRumah || "Alamat tidak tersedia"
+      const rt = w.rt || "-"
+      const rw = w.rw || "-"
 
       if (!rekapMap.has(rumahId)) {
         rekapMap.set(rumahId, {
           rumahId,
-          kepalaNama: w.isKepalaKeluarga ? w.nama : w.nama,
+          kepalaNama: w.isKepalaKeluarga ? w.namaLengkap : w.namaLengkap,
           alamat,
           rt,
           rw,
@@ -144,13 +139,13 @@ export default function LaporanPage() {
       }
 
       const current = rekapMap.get(rumahId)!
-      if (w.isKepalaKeluarga) current.kepalaNama = w.nama
+      if (w.isKepalaKeluarga) current.kepalaNama = w.namaLengkap
     })
 
     rekapMap.forEach((val, key) => {
       if (!val.kepalaNama) {
         const first = warga.find((w) => w.idRumah === key)
-        if (first) val.kepalaNama = first.nama
+        if (first) val.kepalaNama = first.namaLengkap
       }
     })
 
@@ -269,21 +264,33 @@ export default function LaporanPage() {
                   <DialogDescription>Pilih jenis file untuk mengexport laporan rekapan</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-3 py-4">
-                  <Button variant="outline" className="justify-start h-auto py-4 bg-transparent" onClick={() => handleExportReport("pdf")}>
+                  <Button
+                    variant="outline"
+                    className="justify-start h-auto py-4 bg-transparent"
+                    onClick={() => handleExportReport("pdf")}
+                  >
                     <File className="h-5 w-5 mr-3 text-red-600" />
                     <div className="text-left">
                       <div className="font-semibold">PDF Document</div>
                       <div className="text-sm text-gray-500">Format dokumen untuk cetak dan arsip</div>
                     </div>
                   </Button>
-                  <Button variant="outline" className="justify-start h-auto py-4 bg-transparent" onClick={() => handleExportReport("excel")}>
+                  <Button
+                    variant="outline"
+                    className="justify-start h-auto py-4 bg-transparent"
+                    onClick={() => handleExportReport("excel")}
+                  >
                     <FileSpreadsheet className="h-5 w-5 mr-3 text-green-600" />
                     <div className="text-left">
                       <div className="font-semibold">Excel Spreadsheet</div>
                       <div className="text-sm text-gray-500">Format untuk analisis dan perhitungan</div>
                     </div>
                   </Button>
-                  <Button variant="outline" className="justify-start h-auto py-4 bg-transparent" onClick={() => handleExportReport("csv")}>
+                  <Button
+                    variant="outline"
+                    className="justify-start h-auto py-4 bg-transparent"
+                    onClick={() => handleExportReport("csv")}
+                  >
                     <FileText className="h-5 w-5 mr-3 text-blue-600" />
                     <div className="text-left">
                       <div className="font-semibold">CSV File</div>

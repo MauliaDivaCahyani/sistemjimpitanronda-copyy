@@ -36,26 +36,27 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
         if (mode === "edit" && initialData?.id) {
           // Untuk mode edit, ambil detail rumah dengan daftar penghuni
           const rumahDetail = await getRumahById(initialData.id)
-          
-          // Convert penghuni data structure untuk kompatibilitas
-          const penghuni = rumahDetail.penghuni?.map(p => ({
-            id: p.idWarga,
-            namaLengkap: p.namaLengkap,
-            nik: p.nik,
-            jenisKelamin: p.jenisKelamin,
-            statusAktif: p.statusAktif,
-            nomorHp: "",
-            idRumah: initialData.id,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          })) || []
-          
+
+          const penghuni = Array.isArray(rumahDetail.penghuni)
+            ? rumahDetail.penghuni.map((p: any) => ({
+              id: p.id ?? p.idWarga ?? "", // aman untuk dua kemungkinan
+              namaLengkap: p.namaLengkap ?? "",
+              nik: p.nik ?? "",
+              jenisKelamin: p.jenisKelamin ?? "",
+              statusAktif: p.statusAktif ?? "Aktif",
+              nomorHp: p.nomorHp ?? "",
+              idRumah: initialData.id,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }))
+            : []
           setWargaList(penghuni)
+
         } else {
           // Untuk mode create, ambil semua warga aktif yang belum punya rumah
           const data = await getAllWarga()
-          const aktif = Array.isArray(data) 
-            ? data.filter((w) => w.statusAktif === "Aktif" && !w.idRumah) 
+          const aktif = Array.isArray(data)
+            ? data.filter((w) => w.statusAktif === "Aktif" && !w.idRumah)
             : []
           setWargaList(aktif)
         }
@@ -63,7 +64,7 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
         console.error("Gagal memuat data warga:", err)
       }
     }
-    
+
     if (isOpen) {
       fetchWarga()
     }
@@ -80,7 +81,7 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
           statusMapping = "milik_sendiri";
         }
       }
-      
+
       setFormData({
         alamat: initialData.alamat,
         rt: initialData.rt,
@@ -110,17 +111,29 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
+    // 🚨 Validasi agar alamat tidak boleh kosong
+    if (!formData.alamat || formData.alamat.trim() === "") {
+      alert("Alamat tidak boleh kosong. Silakan isi alamat rumah terlebih dahulu.")
+      return
+    }
+
+    // 🚨 (Opsional) Kamu bisa tambahkan validasi lain juga
+    if (!formData.rt || !formData.rw) {
+      alert("RT dan RW tidak boleh kosong.")
+      return
+    }
+
     // Mapping status kepemilikan untuk backend
     const statusKepemilikanBackend = formData.statusKepemilikan === "milik_sendiri" ? "Milik Sendiri" : "Kontrakan";
-    
+
     const payload = {
       alamat: formData.alamat,
       rt: formData.rt,
       rw: formData.rw,
       kodeBarcode: formData.kodeBarcode,
       statusKepemilikan: statusKepemilikanBackend,
-      idKepalaKeluarga: formData.idKepalaKeluarga && formData.idKepalaKeluarga !== "none" && formData.idKepalaKeluarga !== "no-data" 
-        ? Number(formData.idKepalaKeluarga) 
+      idKepalaKeluarga: formData.idKepalaKeluarga && formData.idKepalaKeluarga !== "none" && formData.idKepalaKeluarga !== "no-data"
+        ? Number(formData.idKepalaKeluarga)
         : null,
     }
 
@@ -186,12 +199,12 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
               onValueChange={(value) => setFormData({ ...formData, idKepalaKeluarga: value })}
             >
               <SelectTrigger>
-                <SelectValue 
+                <SelectValue
                   placeholder={
-                    mode === "edit" 
-                      ? "Pilih dari anggota keluarga" 
+                    mode === "edit"
+                      ? "Pilih dari anggota keluarga"
                       : "Pilih kepala keluarga (opsional)"
-                  } 
+                  }
                 />
               </SelectTrigger>
               <SelectContent>
@@ -209,8 +222,8 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
                   ))
                 ) : (
                   <SelectItem value="no-data" disabled>
-                    {mode === "edit" 
-                      ? "Belum ada anggota keluarga di rumah ini" 
+                    {mode === "edit"
+                      ? "Belum ada anggota keluarga di rumah ini"
                       : "Tidak ada warga yang tersedia"}
                   </SelectItem>
                 )}

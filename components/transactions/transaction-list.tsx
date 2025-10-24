@@ -10,13 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Filter, Download, Trash2, Edit, Search } from "lucide-react"
+import { CalendarIcon, Filter, Download, Trash2, Edit, Search, Lock } from "lucide-react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
 import { getTransaksi, getTransactionSummary } from "@/lib/transactions"
 import { getWarga, getJenisDana } from "@/lib/database"
 import type { Transaksi, Warga, JenisDana } from "@/types/database"
 import type { TransactionFilter, TransactionSummary } from "@/lib/transactions"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export function TransactionList() {
   const [transaksi, setTransaksi] = useState<Transaksi[]>([])
@@ -62,7 +63,7 @@ export function TransactionList() {
 
   const getWargaName = (id_warga: string) => {
     const w = warga.find((w) => w.id === id_warga)
-    return w ? w.nama : "Unknown"
+    return w ? w.namaLengkap : "Unknown"
   }
 
   const getJenisDanaName = (id_jenis: string) => {
@@ -99,6 +100,13 @@ export function TransactionList() {
 
   return (
     <div className="space-y-6">
+      <Alert className="border-blue-200 bg-blue-50">
+        <Lock className="h-4 w-4 text-blue-600" />
+        <AlertDescription className="text-blue-800">
+          Daftar transaksi bersifat read-only. Data transaksi tidak dapat diedit atau dihapus setelah disimpan.
+        </AlertDescription>
+      </Alert>
+
       {/* Summary Cards */}
       {summary && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -285,13 +293,21 @@ export function TransactionList() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">
-                        <Button variant="outline" size="sm" className="bg-transparent">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="bg-transparent"
+                          disabled
+                          title="Transaksi tidak dapat diedit"
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           className="text-destructive hover:text-destructive bg-transparent"
+                          disabled
+                          title="Transaksi tidak dapat dihapus"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { generateBarcodeData, generateBarcodeUrl } from "@/lib/barcode"
 import { Download, Printer, QrCode } from "lucide-react"
+import { updateRumah } from "@/lib/database"
+import { toast } from "@/hooks/use-toast"
 import type { Rumah } from "@/types/database"
 
 interface BarcodeGeneratorProps {
@@ -18,14 +20,34 @@ export function BarcodeGenerator({ rumah }: BarcodeGeneratorProps) {
   const [selectedRumah, setSelectedRumah] = useState<Rumah | null>(null)
   const [generatedBarcode, setGeneratedBarcode] = useState<string>("")
   const [barcodeUrl, setBarcodeUrl] = useState<string>("")
+  const [isSaving, setIsSaving] = useState(false)
 
-  const handleGenerateBarcode = (rumahData: Rumah) => {
-    const barcodeData = generateBarcodeData(rumahData.id, rumahData.alamat)
-    const url = generateBarcodeUrl(barcodeData)
+  const handleGenerateBarcode = async (rumahData: Rumah) => {
+    setIsSaving(true)
+    try {
+      const barcodeData = generateBarcodeData(rumahData.id, rumahData.alamat)
+      const url = generateBarcodeUrl(barcodeData)
 
-    setSelectedRumah(rumahData)
-    setGeneratedBarcode(barcodeData)
-    setBarcodeUrl(url)
+      await updateRumah(rumahData.id, { kodeBarcode: barcodeData })
+
+      setSelectedRumah(rumahData)
+      setGeneratedBarcode(barcodeData)
+      setBarcodeUrl(url)
+
+      toast({
+        title: "Berhasil",
+        description: "Barcode berhasil di-generate dan disimpan",
+      })
+    } catch (error) {
+      console.error("Error generating barcode:", error)
+      toast({
+        title: "Error",
+        description: "Gagal membuat barcode",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handlePrintBarcode = () => {
@@ -107,9 +129,9 @@ export function BarcodeGenerator({ rumah }: BarcodeGeneratorProps) {
                         RT {r.rt}/RW {r.rw}
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">Kode: {r.kodeBarcode}</p>
-                    <Button onClick={() => handleGenerateBarcode(r)} className="w-full" size="sm">
-                      Generate Barcode
+                    <p className="text-sm text-muted-foreground">Kode: {r.kodeBarcode || "Belum di-generate"}</p>
+                    <Button onClick={() => handleGenerateBarcode(r)} className="w-full" size="sm" disabled={isSaving}>
+                      {isSaving ? "Generating..." : "Generate Barcode"}
                     </Button>
                   </div>
                 </CardContent>
@@ -155,11 +177,7 @@ export function BarcodeGenerator({ rumah }: BarcodeGeneratorProps) {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Kode Lama:</span>
-                      <span>{selectedRumah.kodeBarcode}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Kode Baru:</span>
+                      <span className="text-muted-foreground">Kode Barcode:</span>
                       <span className="font-mono">{generatedBarcode}</span>
                     </div>
                   </div>
