@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { getAllRumah, getAllKelompokRonda } from "@/lib/database"
-import type { Warga, Rumah, KelompokRonda } from "@/types/database"
+import { getAllRumah } from "@/lib/database"
+import type { Warga, Rumah } from "@/types/database"
 
 interface WargaFormProps {
   isOpen: boolean
@@ -21,7 +21,6 @@ interface WargaFormProps {
 
 export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: WargaFormProps) {
   const [rumahList, setRumahList] = useState<Rumah[]>([])
-  const [kelompokRondaList, setKelompokRondaList] = useState<KelompokRonda[]>([])
   const [formData, setFormData] = useState({
     idRumah: "",
     namaLengkap: "",
@@ -29,19 +28,16 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
     nomorHp: "",
     jenisKelamin: "",
     statusAktif: "Aktif" as "Aktif" | "Tidak Aktif",
-    idKelompokRonda: "",
   })
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const rumahData = await getAllRumah()
-        const kelompokData = await getAllKelompokRonda()
 
         setRumahList(Array.isArray(rumahData) ? rumahData : [])
-        setKelompokRondaList(Array.isArray(kelompokData) ? kelompokData : [])
       } catch (error) {
-        console.error("Gagal memuat data rumah atau kelompok ronda:", error)
+        console.error("Gagal memuat data rumah:", error)
       }
     }
 
@@ -57,7 +53,6 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
         nomorHp: initialData.nomorHp ?? "",
         jenisKelamin: initialData.jenisKelamin ?? "",
         statusAktif: initialData.statusAktif ?? "Aktif",
-        idKelompokRonda: (initialData as any).idKelompokRonda ?? "",
       })
     } else {
       setFormData({
@@ -67,7 +62,6 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
         nomorHp: "",
         jenisKelamin: "",
         statusAktif: "Aktif" as "Aktif" | "Tidak Aktif",
-        idKelompokRonda: "",
       })
     }
   }, [initialData, mode, isOpen])
@@ -160,25 +154,7 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
             </Select>
           </div>
 
-          {/* Kelompok Ronda */}
-          <div className="space-y-2">
-            <Label htmlFor="idKelompokRonda">Kelompok Ronda</Label>
-            <Select
-              value={formData.idKelompokRonda}
-              onValueChange={(value) => setFormData({ ...formData, idKelompokRonda: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih kelompok ronda (opsional)" />
-              </SelectTrigger>
-              <SelectContent>
-                {kelompokRondaList.map((kelompok) => (
-                  <SelectItem key={kelompok.id} value={kelompok.id}>
-                    {kelompok.namaKelompok}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+
 
           {/* Status Aktif */}
           <div className="flex items-center space-x-2">

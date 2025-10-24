@@ -20,6 +20,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Plus, Eye, Edit, Trash2 } from "lucide-react"
 import { getAllPetugas, createPetugas, updatePetugas, deletePetugas } from "@/lib/database"
+import { PetugasForm } from "@/components/forms/petugas-form"
+import { toast } from "@/hooks/use-toast"
 import type { User } from "@/types/database"
 
 export default function DataPetugasPage() {
@@ -28,26 +30,9 @@ export default function DataPetugasPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [selectedPetugas, setSelectedPetugas] = useState<User | null>(null)
-  const [formData, setFormData] = useState({
-    id_warga: undefined as number | undefined,
-    namaLengkap: "",
-    username: "",
-    password: "",
-    jabatan: "",
-    status: "aktif" as "aktif" | "nonaktif",
-    role: "petugas" as "petugas" | "admin" | "super_admin",
-  })
+  const [formMode, setFormMode] = useState<"create" | "edit">("create")
 
-  const [wargaList, setWargaList] = useState<{ id_warga: number; nama_lengkap: string }[]>([])
-  const fetchWarga = async () => {
-    try {
-      const res = await fetch("http://localhost:5006/api/warga") // endpoint warga
-      const result = await res.json()
-      if (result.success) setWargaList(result.data)
-    } catch (err) {
-      console.error("Gagal memuat data warga:", err)
-    }
-  }
+
   const [petugas, setPetugas] = useState<User[]>([])
 
   const fetchPetugas = async () => {
@@ -71,7 +56,6 @@ export default function DataPetugasPage() {
 
   useEffect(() => {
     fetchPetugas()
-    fetchWarga()
   }, [])
 
   const filteredPetugas = petugas.filter(
@@ -81,36 +65,37 @@ export default function DataPetugasPage() {
       p.jabatan?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const handleAdd = async () => {
-    if (!formData.id_warga) {
-      alert("Silakan pilih warga terlebih dahulu.")
-      return
-    }
-    if (!formData.username) {
-      alert("Username wajib diisi.")
-      return
-    }
-    if (!formData.jabatan) {
-      alert("Jabatan wajib diisi.")
-      return
-    }
+  const handleCreate = () => {
+    setFormMode("create")
+    setSelectedPetugas(null)
+    setIsAddDialogOpen(true)
+  }
+
+  const handleFormSubmit = async (data: any) => {
     try {
-      const payload = {
-        id_warga: formData.id_warga, // dikirim ke backend
-        id_kelompok_ronda: null,
-        jabatan: formData.jabatan,
-        role: formData.role,
-        username: formData.username,
-        password: formData.password,
-        statusUser: formData.status === "aktif", // convert ke boolean
+      if (formMode === "create") {
+        await createPetugas(data)
+        toast({
+          title: "Berhasil",
+          description: "Petugas berhasil ditambahkan",
+        })
+      } else if (selectedPetugas) {
+        await updatePetugas(selectedPetugas.id, data)
+        toast({
+          title: "Berhasil", 
+          description: "Data petugas berhasil diperbarui",
+        })
       }
-      delete (payload as any).status // hapus property status
-      await createPetugas(payload)
+
       await fetchPetugas()
       setIsAddDialogOpen(false)
-      resetForm()
-    } catch (err) {
-      console.error("Gagal menambah petugas:", err)
+      setIsEditDialogOpen(false)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan data petugas",
+        variant: "destructive",
+      })
     }
   }
 
@@ -120,49 +105,28 @@ export default function DataPetugasPage() {
   }
 
   const handleEdit = (petugas: User) => {
+    setFormMode("edit")
     setSelectedPetugas(petugas)
-    setFormData({
-      id_warga: 0,
-      namaLengkap: petugas.namaLengkap,
-      username: petugas.username ?? "",
-      password: "",
-      jabatan: petugas.jabatan ?? "",
-      status: petugas.statusUser ? "aktif" : "nonaktif",
-      role: petugas.role as "petugas" | "admin" | "super_admin",
-    })
     setIsEditDialogOpen(true)
-  }
-
-  const handleUpdate = async () => {
-    if (selectedPetugas) {
-      await updatePetugas(selectedPetugas.id, {
-        ...formData,
-        statusUser: formData.status === "aktif",
-      })
-      await fetchPetugas()
-      setIsEditDialogOpen(false)
-      resetForm()
-    }
   }
 
   const handleDelete = async (id: string) => {
     if (confirm("Apakah Anda yakin ingin menghapus petugas ini?")) {
-      await deletePetugas(id)
-      await fetchPetugas()
+      try {
+        await deletePetugas(id)
+        toast({
+          title: "Berhasil",
+          description: "Petugas berhasil dihapus",
+        })
+        await fetchPetugas()
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Gagal menghapus petugas",
+          variant: "destructive",
+        })
+      }
     }
-  }
-
-  const resetForm = () => {
-    setFormData({
-      id_warga: 0,
-      namaLengkap: "",
-      username: "",
-      password: "",
-      jabatan: "",
-      status: "aktif",
-      role: "petugas",
-    })
-    setSelectedPetugas(null)
   }
 
   return (
@@ -178,110 +142,10 @@ export default function DataPetugasPage() {
           />
         </div>
 
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto">
-              <Plus className="h-4 w-4 mr-2" />
-              Tambah Petugas
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="w-[90vw] max-w-lg sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Tambah Petugas Baru</DialogTitle>
-              <DialogDescription>Masukkan informasi petugas baru</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <Label htmlFor="id_warga" className="sm:text-right">
-                  Nama Warga
-                </Label>
-                <Select
-                  value={formData.id_warga ? String(formData.id_warga) : undefined}
-                  onValueChange={(value) => setFormData({ ...formData, id_warga: Number(value) })}
-                >
-                  <SelectTrigger className="sm:col-span-3">
-                    <SelectValue placeholder="Pilih warga" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {wargaList.map((w, index) => (
-                      <SelectItem key={`warga-${w.id_warga || index}`} value={String(w.id_warga)}>
-                        {w.nama_lengkap}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <Label htmlFor="username" className="sm:text-right">
-                  Username
-                </Label>
-                <Input
-                  id="username"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="sm:col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <Label htmlFor="password" className="sm:text-right">
-                  Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="sm:col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <Label htmlFor="jabatan" className="sm:text-right">
-                  Jabatan
-                </Label>
-                <Select
-                  value={formData.jabatan}
-                  onValueChange={(value) => setFormData({ ...formData, jabatan: value })}
-                >
-                  <SelectTrigger className="sm:col-span-3">
-                    <SelectValue placeholder="Pilih jabatan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Ketua RT">Ketua RT</SelectItem>
-                    <SelectItem value="Sekretaris">Sekretaris</SelectItem>
-                    <SelectItem value="Bendahara">Bendahara</SelectItem>
-                    <SelectItem value="Koordinator Ronda">Koordinator Ronda</SelectItem>
-                    <SelectItem value="Anggota Ronda">Anggota Ronda</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <Label htmlFor="role" className="sm:text-right">
-                  Role
-                </Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value: "petugas" | "admin" | "super_admin") =>
-                    setFormData({ ...formData, role: value })
-                  }
-                >
-                  <SelectTrigger className="sm:col-span-3">
-                    <SelectValue placeholder="Pilih role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="petugas">Petugas</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="super_admin">Super Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit" onClick={handleAdd}>
-                Simpan
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={handleCreate} className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto">
+          <Plus className="h-4 w-4 mr-2" />
+          Tambah Petugas
+        </Button>
       </div>
 
       <Card>
@@ -439,97 +303,22 @@ export default function DataPetugasPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="w-[90vw] max-w-lg sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Edit Petugas</DialogTitle>
-            <DialogDescription>Ubah informasi petugas</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit_namaLengkap" className="sm:text-right">
-                Nama Lengkap
-              </Label>
-              <Input
-                id="edit_namaLengkap"
-                value={formData.namaLengkap}
-                onChange={(e) => setFormData({ ...formData, namaLengkap: e.target.value })}
-                className="sm:col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit_username" className="sm:text-right">
-                Username
-              </Label>
-              <Input
-                id="edit_username"
-                value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                className="sm:col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit_jabatan" className="sm:text-right">
-                Jabatan
-              </Label>
-              <Select value={formData.jabatan} onValueChange={(value) => setFormData({ ...formData, jabatan: value })}>
-                <SelectTrigger className="sm:col-span-3">
-                  <SelectValue placeholder="Pilih jabatan" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Ketua RT">Ketua RT</SelectItem>
-                  <SelectItem value="Sekretaris">Sekretaris</SelectItem>
-                  <SelectItem value="Bendahara">Bendahara</SelectItem>
-                  <SelectItem value="Koordinator Ronda">Koordinator Ronda</SelectItem>
-                  <SelectItem value="Anggota Ronda">Anggota Ronda</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit_role" className="sm:text-right">
-                Role
-              </Label>
-              <Select
-                value={formData.role}
-                onValueChange={(value: "petugas" | "admin" | "super_admin") =>
-                  setFormData({ ...formData, role: value })
-                }
-              >
-                <SelectTrigger className="sm:col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="petugas">Petugas</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="super_admin">Super Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit_status" className="sm:text-right">
-                Status
-              </Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value: any) => setFormData({ ...formData, status: value })}
-              >
-                <SelectTrigger className="sm:col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="aktif">Aktif</SelectItem>
-                  <SelectItem value="nonaktif">Nonaktif</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="submit" onClick={handleUpdate}>
-              Update
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      
+      <PetugasForm
+        isOpen={isAddDialogOpen}
+        onClose={() => setIsAddDialogOpen(false)}
+        onSubmit={handleFormSubmit}
+        initialData={null}
+        mode="create"
+      />
+
+      <PetugasForm
+        isOpen={isEditDialogOpen}
+        onClose={() => setIsEditDialogOpen(false)}
+        onSubmit={handleFormSubmit}
+        initialData={selectedPetugas}
+        mode="edit"
+      />
     </DashboardLayout>
   )
 }
