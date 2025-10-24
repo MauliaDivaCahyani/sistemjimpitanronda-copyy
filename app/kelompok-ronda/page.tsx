@@ -18,8 +18,14 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Search, Plus, Edit, Trash2, Users, Clock, MapPin, ChevronDown, ChevronUp } from "lucide-react"
-import { getAllKelompokRonda, createKelompokRonda, updateKelompokRonda, deleteKelompokRonda } from "@/lib/database"
-import type { KelompokRonda } from "@/types/database"
+import {
+  getAllKelompokRonda,
+  createKelompokRonda,
+  updateKelompokRonda,
+  deleteKelompokRonda,
+  getAllPetugas,
+} from "@/lib/database"
+import type { KelompokRonda, User } from "@/types/database"
 
 const mockMembers: Record<string, string[]> = {
   default: [
@@ -40,6 +46,7 @@ export default function KelompokRondaPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [selectedKelompok, setSelectedKelompok] = useState<KelompokRonda | null>(null)
   const [expandedMembers, setExpandedMembers] = useState<Record<string, boolean>>({})
+  const [petugasList, setPetugasList] = useState<User[]>([])
   const [formData, setFormData] = useState({
     namaKelompok: "",
     keteranganKelompok: "",
@@ -54,6 +61,8 @@ export default function KelompokRondaPage() {
         const data = await getAllKelompokRonda()
         // ✅ Langsung set, karena lib/database.ts sudah mengembalikan array
         setKelompokRonda(Array.isArray(data) ? data : [])
+        const petugasData = await getAllPetugas()
+        setPetugasList(Array.isArray(petugasData) ? petugasData : [])
       } catch (error) {
         console.error("Gagal memuat data kelompok ronda:", error)
         setKelompokRonda([])
@@ -106,10 +115,9 @@ export default function KelompokRondaPage() {
   }
 
   const getMembers = (kelompokId: string, kelompokName: string) => {
-    const memberCount = kelompokName.includes("A") ? 5 : 8
-    return mockMembers.default.slice(0, memberCount)
+    const petugasInKelompok = petugasList.filter((p) => (p as any).idKelompokRonda === kelompokId)
+    return petugasInKelompok.length > 0 ? petugasInKelompok.map((p) => p.namaLengkap || p.username || "Unknown") : []
   }
-
 
   const toggleMemberExpansion = (kelompokId: string) => {
     setExpandedMembers((prev) => ({
@@ -141,7 +149,7 @@ export default function KelompokRondaPage() {
           <DialogContent className="w-[90vw] max-w-lg sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Tambah Kelompok Ronda Baru</DialogTitle>
-              <DialogDescription>Masukkan informasi kelompok ronda baru</DialogDescription>
+              <DialogDescription>Masukkan informasi kelompok ronda baru (Contoh: Kelompok A)</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
@@ -213,12 +221,16 @@ export default function KelompokRondaPage() {
 
                     {isExpanded && (
                       <div className="ml-6 mt-2 space-y-1 bg-gray-50 rounded-md p-3">
-                        {members.map((member, index) => (
-                          <div key={index} className="text-sm text-gray-700 flex items-center">
-                            <span className="w-6 text-gray-400">{index + 1}.</span>
-                            <span>{member}</span>
-                          </div>
-                        ))}
+                        {members.length > 0 ? (
+                          members.map((member, index) => (
+                            <div key={index} className="text-sm text-gray-700 flex items-center">
+                              <span className="w-6 text-gray-400">{index + 1}.</span>
+                              <span>{member}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-sm text-gray-500 italic">Belum ada anggota</div>
+                        )}
                       </div>
                     )}
 

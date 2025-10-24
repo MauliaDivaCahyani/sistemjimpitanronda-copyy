@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Filter, Download, Trash2, Edit, Search, Lock } from "lucide-react"
+import { CalendarIcon, Filter, Download, Search, Lock } from "lucide-react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
 import { getTransaksi, getTransactionSummary } from "@/lib/transactions"
@@ -270,7 +270,6 @@ export function TransactionList() {
                   <TableHead>Nominal</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Waktu Input</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -292,26 +291,7 @@ export function TransactionList() {
                       {format(t.waktu_input, "dd MMM yyyy HH:mm", { locale: id })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="bg-transparent"
-                          disabled
-                          title="Transaksi tidak dapat diedit"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-destructive hover:text-destructive bg-transparent"
-                          disabled
-                          title="Transaksi tidak dapat dihapus"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <div className="flex gap-2 justify-end"></div>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -18,15 +18,13 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Plus, Edit, Trash2, DollarSign, Calendar } from "lucide-react"
+import { Search, Plus, Edit, Trash2 } from "lucide-react"
 import { getAllJenisDana, createJenisDana, updateJenisDana, deleteJenisDana } from "@/lib/database"
 import type { JenisDana } from "@/types/database"
 
 type JenisDanaFormData = {
   namaDana: string
   deskripsi: string
-  nominalDefault: string
-  periodeBayar: "harian" | "mingguan" | "bulanan" | "tahunan"
   isActive: boolean
 }
 
@@ -41,8 +39,6 @@ export default function JenisDanaPage() {
   const [formData, setFormData] = useState<JenisDanaFormData>({
     namaDana: "",
     deskripsi: "",
-    nominalDefault: "",
-    periodeBayar: "harian",
     isActive: true,
   })
 
@@ -73,8 +69,6 @@ export default function JenisDanaPage() {
       const jenisDanaData: Omit<JenisDana, "id" | "createdAt" | "updatedAt"> = {
         namaDana: formData.namaDana,
         deskripsi: formData.deskripsi,
-        nominalDefault: Number.parseFloat(formData.nominalDefault) || 0,
-        periodeBayar: formData.periodeBayar,
         isActive: formData.isActive,
       }
       await createJenisDana(jenisDanaData)
@@ -92,8 +86,6 @@ export default function JenisDanaPage() {
     setFormData({
       namaDana: jenis.namaDana || "",
       deskripsi: jenis.deskripsi || "",
-      nominalDefault: (jenis.nominalDefault != null ? jenis.nominalDefault.toString() : "0"),
-      periodeBayar: jenis.periodeBayar || "harian",
       isActive: jenis.isActive ?? true,
     })
     setIsEditDialogOpen(true)
@@ -105,8 +97,6 @@ export default function JenisDanaPage() {
         const jenisDanaData: Partial<JenisDana> = {
           namaDana: formData.namaDana,
           deskripsi: formData.deskripsi,
-          nominalDefault: Number.parseFloat(formData.nominalDefault) || 0,
-          periodeBayar: formData.periodeBayar,
           isActive: formData.isActive,
         }
         await updateJenisDana(selectedJenis.id, jenisDanaData)
@@ -136,8 +126,6 @@ export default function JenisDanaPage() {
     setFormData({
       namaDana: "",
       deskripsi: "",
-      nominalDefault: "",
-      periodeBayar: "harian",
       isActive: true,
     })
     setSelectedJenis(null)
@@ -204,42 +192,6 @@ export default function JenisDanaPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <Label htmlFor="nominalDefault" className="sm:text-right">
-                  Nominal Default
-                </Label>
-                <Input
-                  id="nominalDefault"
-                  type="number"
-                  value={formData.nominalDefault}
-                  onChange={(e) => setFormData({ ...formData, nominalDefault: e.target.value })}
-                  className="sm:col-span-3"
-                  placeholder="5000"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <Label htmlFor="periodeBayar" className="sm:text-right">
-                  Periode Bayar
-                </Label>
-                <Select
-                  value={formData.periodeBayar}
-                  onValueChange={(value: "harian" | "mingguan" | "bulanan" | "tahunan") =>
-                    setFormData({ ...formData, periodeBayar: value })
-                  }
-                >
-                  <SelectTrigger className="sm:col-span-3">
-                    <SelectValue placeholder="Pilih periode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="harian">Harian</SelectItem>
-                    <SelectItem value="mingguan">Mingguan</SelectItem>
-                    <SelectItem value="bulanan">Bulanan</SelectItem>
-                    <SelectItem value="tahunan">Tahunan</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
                 <Label htmlFor="isActive" className="sm:text-right">
                   Status
                 </Label>
@@ -283,17 +235,6 @@ export default function JenisDanaPage() {
                   <Badge variant={jenis.isActive ? "default" : "secondary"} className="bg-emerald-100 text-emerald-700">
                     {jenis.isActive ? "Aktif" : "Nonaktif"}
                   </Badge>
-                </div>
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <DollarSign className="h-4 w-4 mr-2" />
-                    <span className="font-medium">{formatCurrency(jenis.nominalDefault)}</span>
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    <span className="capitalize">{jenis.periodeBayar}</span>
-                  </div>
                 </div>
 
                 <div className="flex space-x-2">
@@ -350,41 +291,6 @@ export default function JenisDanaPage() {
                 onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
                 className="sm:col-span-3"
               />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit_nominalDefault" className="sm:text-right">
-                Nominal Default
-              </Label>
-              <Input
-                id="edit_nominalDefault"
-                type="number"
-                value={formData.nominalDefault}
-                onChange={(e) => setFormData({ ...formData, nominalDefault: e.target.value })}
-                className="sm:col-span-3"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit_periodeBayar" className="sm:text-right">
-                Periode Bayar
-              </Label>
-              <Select
-                value={formData.periodeBayar}
-                onValueChange={(value: "harian" | "mingguan" | "bulanan" | "tahunan") =>
-                  setFormData({ ...formData, periodeBayar: value })
-                }
-              >
-                <SelectTrigger className="sm:col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="harian">Harian</SelectItem>
-                  <SelectItem value="mingguan">Mingguan</SelectItem>
-                  <SelectItem value="bulanan">Bulanan</SelectItem>
-                  <SelectItem value="tahunan">Tahunan</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">

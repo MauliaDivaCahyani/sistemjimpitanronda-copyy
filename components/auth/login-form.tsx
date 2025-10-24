@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { authenticateUser } from "@/lib/auth"
 import type { User } from "@/types/auth"
-import { Loader2, Phone, UserIcon } from "lucide-react"
+import { Eye, EyeOff, Loader2, Phone, UserIcon } from "lucide-react"
 
 interface LoginFormProps {
   onLogin: (user: User) => void
@@ -19,6 +19,8 @@ interface LoginFormProps {
 export function LoginForm({ onLogin }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [showPhonePassword, setShowPhonePassword] = useState(false)
+  const [showUsernamePassword, setShowUsernamePassword] = useState(false)
 
   const [phoneLogin, setPhoneLogin] = useState({
     nomorHp: "",
@@ -98,7 +100,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                   <Input
                     id="phone"
                     type="tel"
-                    placeholder="081234567890"
+                    placeholder="Contoh: 081234567890"
                     value={phoneLogin.nomorHp}
                     onChange={(e) => setPhoneLogin((prev) => ({ ...prev, nomorHp: e.target.value }))}
                     required
@@ -106,13 +108,23 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone-password">Password</Label>
-                  <Input
-                    id="phone-password"
-                    type="password"
-                    value={phoneLogin.password}
-                    onChange={(e) => setPhoneLogin((prev) => ({ ...prev, password: e.target.value }))}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="phone-password"
+                      type={showPhonePassword ? "text" : "password"}
+                      placeholder="Masukkan password"
+                      value={phoneLogin.password}
+                      onChange={(e) => setPhoneLogin((prev) => ({ ...prev, password: e.target.value }))}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPhonePassword(!showPhonePassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPhonePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
                 <Button type="submit" className="w-full" disabled={isLoading}>
@@ -129,7 +141,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                   <Input
                     id="username"
                     type="text"
-                    placeholder="username"
+                    placeholder="Masukkan username"
                     value={usernameLogin.username}
                     onChange={(e) => setUsernameLogin((prev) => ({ ...prev, username: e.target.value }))}
                     required
@@ -137,13 +149,23 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="username-password">Password</Label>
-                  <Input
-                    id="username-password"
-                    type="password"
-                    value={usernameLogin.password}
-                    onChange={(e) => setUsernameLogin((prev) => ({ ...prev, password: e.target.value }))}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="username-password"
+                      type={showUsernamePassword ? "text" : "password"}
+                      placeholder="Masukkan password"
+                      value={usernameLogin.password}
+                      onChange={(e) => setUsernameLogin((prev) => ({ ...prev, password: e.target.value }))}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowUsernamePassword(!showUsernamePassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showUsernamePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
                 <Button type="submit" className="w-full" disabled={isLoading}>

@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,8 +15,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { getAllWarga } from "@/lib/database"
-import type { User, Warga } from "@/types/database"
+import { getAllWarga, getAllKelompokRonda } from "@/lib/database"
+import type { User, Warga, KelompokRonda } from "@/types/database"
 import { toast } from "@/hooks/use-toast"
 
 interface PetugasFormProps {
@@ -25,16 +27,12 @@ interface PetugasFormProps {
   mode: "create" | "edit"
 }
 
-export function PetugasForm({
-  isOpen,
-  onClose,
-  onSubmit,
-  initialData,
-  mode,
-}: PetugasFormProps) {
+export function PetugasForm({ isOpen, onClose, onSubmit, initialData, mode }: PetugasFormProps) {
   const [wargaList, setWargaList] = useState<Warga[]>([])
+  const [kelompokRondaList, setKelompokRondaList] = useState<KelompokRonda[]>([])
   const [formData, setFormData] = useState({
     idWarga: "",
+    idKelompokRonda: "",
     username: "",
     password: "",
     jabatan: "",
@@ -46,9 +44,10 @@ export function PetugasForm({
     const fetchWarga = async () => {
       try {
         const data = await getAllWarga()
-        // Filter warga yang status aktif
-        const activeWarga = Array.isArray(data) ? data.filter(w => w.statusAktif === "Aktif") : []
+        const activeWarga = Array.isArray(data) ? data.filter((w) => w.statusAktif === "Aktif") : []
         setWargaList(activeWarga)
+        const kelompokData = await getAllKelompokRonda()
+        setKelompokRondaList(Array.isArray(kelompokData) ? kelompokData : [])
       } catch (error) {
         console.error("Gagal memuat data warga:", error)
         toast({
@@ -68,6 +67,7 @@ export function PetugasForm({
     if (initialData && mode === "edit") {
       setFormData({
         idWarga: (initialData as any).idWarga || "",
+        idKelompokRonda: (initialData as any).idKelompokRonda || "",
         username: initialData.username || "",
         password: "",
         jabatan: initialData.jabatan || "",
@@ -77,6 +77,7 @@ export function PetugasForm({
     } else {
       setFormData({
         idWarga: "",
+        idKelompokRonda: "",
         username: "",
         password: "",
         jabatan: "",
@@ -89,7 +90,6 @@ export function PetugasForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Validasi
     if (mode === "create" && !formData.idWarga) {
       toast({
         title: "Error",
@@ -101,7 +101,7 @@ export function PetugasForm({
 
     if (!formData.username) {
       toast({
-        title: "Error", 
+        title: "Error",
         description: "Username wajib diisi",
         variant: "destructive",
       })
@@ -120,7 +120,7 @@ export function PetugasForm({
     if (!formData.jabatan) {
       toast({
         title: "Error",
-        description: "Jabatan wajib diisi", 
+        description: "Jabatan wajib diisi",
         variant: "destructive",
       })
       return
@@ -135,18 +135,16 @@ export function PetugasForm({
     onClose()
   }
 
-  const selectedWarga = wargaList.find(w => w.id === formData.idWarga)
+  const selectedWarga = wargaList.find((w) => w.id === formData.idWarga)
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[90vw] max-w-lg sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>
-            {mode === "create" ? "Tambah Petugas Baru" : "Edit Data Petugas"}
-          </DialogTitle>
+          <DialogTitle>{mode === "create" ? "Tambah Petugas Baru" : "Edit Data Petugas"}</DialogTitle>
           <DialogDescription>
-            {mode === "create" 
-              ? "Pilih warga untuk dijadikan petugas dan lengkapi informasi berikut" 
+            {mode === "create"
+              ? "Pilih warga untuk dijadikan petugas dan lengkapi informasi berikut"
               : "Ubah informasi petugas"}
           </DialogDescription>
         </DialogHeader>
@@ -156,10 +154,7 @@ export function PetugasForm({
           {mode === "create" && (
             <div className="space-y-2">
               <Label htmlFor="warga">Nama Warga *</Label>
-              <Select
-                value={formData.idWarga}
-                onValueChange={(value) => setFormData({ ...formData, idWarga: value })}
-              >
+              <Select value={formData.idWarga} onValueChange={(value) => setFormData({ ...formData, idWarga: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih warga untuk dijadikan petugas" />
                 </SelectTrigger>
@@ -185,9 +180,29 @@ export function PetugasForm({
             </div>
           )}
 
+          <div className="space-y-2">
+            <Label htmlFor="kelompokRonda">Kelompok Ronda</Label>
+            <Select
+              value={formData.idKelompokRonda}
+              onValueChange={(value) => setFormData({ ...formData, idKelompokRonda: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih kelompok ronda (opsional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Tidak ada</SelectItem>
+                {kelompokRondaList.map((kelompok) => (
+                  <SelectItem key={kelompok.id} value={kelompok.id}>
+                    {kelompok.namaKelompok}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Username */}
           <div className="space-y-2">
-            <Label htmlFor="username">Username *</Label>
+            <Label htmlFor="username">Username * (Contoh: admin123)</Label>
             <Input
               id="username"
               value={formData.username}
@@ -200,7 +215,7 @@ export function PetugasForm({
           {/* Password */}
           <div className="space-y-2">
             <Label htmlFor="password">
-              Password {mode === "create" ? "*" : "(kosongkan jika tidak ingin mengubah)"}
+              Password {mode === "create" ? "*" : "(kosongkan jika tidak ingin mengubah)"} (Contoh: pass123)
             </Label>
             <Input
               id="password"
@@ -214,11 +229,8 @@ export function PetugasForm({
 
           {/* Jabatan */}
           <div className="space-y-2">
-            <Label htmlFor="jabatan">Jabatan *</Label>
-            <Select
-              value={formData.jabatan}
-              onValueChange={(value) => setFormData({ ...formData, jabatan: value })}
-            >
+            <Label htmlFor="jabatan">Jabatan * (Contoh: Ketua RT)</Label>
+            <Select value={formData.jabatan} onValueChange={(value) => setFormData({ ...formData, jabatan: value })}>
               <SelectTrigger>
                 <SelectValue placeholder="Pilih jabatan" />
               </SelectTrigger>
@@ -237,9 +249,7 @@ export function PetugasForm({
             <Label htmlFor="role">Role</Label>
             <Select
               value={formData.role}
-              onValueChange={(value: "petugas" | "admin" | "super_admin") =>
-                setFormData({ ...formData, role: value })
-              }
+              onValueChange={(value: "petugas" | "admin" | "super_admin") => setFormData({ ...formData, role: value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Pilih role" />
@@ -257,9 +267,7 @@ export function PetugasForm({
             <Label htmlFor="status">Status</Label>
             <Select
               value={formData.status}
-              onValueChange={(value: "aktif" | "nonaktif") =>
-                setFormData({ ...formData, status: value })
-              }
+              onValueChange={(value: "aktif" | "nonaktif") => setFormData({ ...formData, status: value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Pilih status" />
@@ -288,9 +296,7 @@ export function PetugasForm({
             <Button type="button" variant="outline" onClick={onClose}>
               Batal
             </Button>
-            <Button type="submit">
-              {mode === "create" ? "Tambah Petugas" : "Simpan Perubahan"}
-            </Button>
+            <Button type="submit">{mode === "create" ? "Tambah Petugas" : "Simpan Perubahan"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

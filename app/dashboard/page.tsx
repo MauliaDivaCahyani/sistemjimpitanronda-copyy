@@ -216,7 +216,9 @@ export default function DashboardPage() {
             <QrCode className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <Button className="w-full">Mulai Scan</Button>
+            <Button className="w-full" onClick={() => (window.location.href = "/scan-barcode")}>
+              Mulai Scan
+            </Button>
           </CardContent>
         </Card>
       </div>

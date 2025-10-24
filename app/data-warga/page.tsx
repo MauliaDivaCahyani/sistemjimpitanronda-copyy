@@ -5,7 +5,6 @@ import { WargaForm } from "@/components/forms/warga-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Plus, Search, Eye, Edit, Trash2, Phone, MapPin } from "lucide-react"
 import {
@@ -64,10 +63,10 @@ export default function DataWargaPage() {
   }, [])
 
   const filteredWarga = warga.filter(
-  (w) =>
-    w.namaLengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    w.alamatRumah?.toLowerCase().includes(searchTerm.toLowerCase())
-)
+    (w) =>
+      w.namaLengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      w.alamatRumah?.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
 
   const handleCreate = () => {
     setFormMode("create")
@@ -209,9 +208,6 @@ export default function DataWargaPage() {
                           <p className="text-sm text-muted-foreground">{w.jenisKelamin}</p>
                         </div>
                       </div>
-                      <Badge variant={w.statusAktif ? "default" : "secondary"} className="bg-green-500">
-                        {w.statusAktif ? "Aktif" : "Tidak Aktif"}
-                      </Badge>
                     </div>
 
                     <div className="space-y-2 mb-4">
@@ -297,9 +293,6 @@ export default function DataWargaPage() {
                     <p className="text-muted-foreground">{selectedWarga.jenisKelamin}</p>
                   </div>
                 </div>
-                <Badge variant={selectedWarga.statusAktif ? "default" : "secondary"} className="bg-green-500">
-                  {selectedWarga.statusAktif ? "Aktif" : "Tidak Aktif"}
-                </Badge>
               </div>
 
               <div className="space-y-4">
@@ -355,7 +348,8 @@ export default function DataWargaPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus Data Warga</AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus data warga "{wargaToDelete?.namaLengkap}"? Tindakan ini tidak dapat dibatalkan.
+              Apakah Anda yakin ingin menghapus data warga "{wargaToDelete?.namaLengkap}"? Tindakan ini tidak dapat
+              dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

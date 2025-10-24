@@ -6,10 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { getAllRumah } from "@/lib/database"
-import type { Warga, Rumah } from "@/types/database"
+import { getAllRumah, getAllKelompokRonda } from "@/lib/database"
+import type { Warga, Rumah, KelompokRonda } from "@/types/database"
 
 interface WargaFormProps {
   isOpen: boolean
@@ -21,8 +20,10 @@ interface WargaFormProps {
 
 export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: WargaFormProps) {
   const [rumahList, setRumahList] = useState<Rumah[]>([])
+  const [kelompokRondaList, setKelompokRondaList] = useState<KelompokRonda[]>([])
   const [formData, setFormData] = useState({
     idRumah: "",
+    idKelompokRonda: "",
     namaLengkap: "",
     nik: "",
     nomorHp: "",
@@ -34,8 +35,9 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
     const fetchData = async () => {
       try {
         const rumahData = await getAllRumah()
-
         setRumahList(Array.isArray(rumahData) ? rumahData : [])
+        const kelompokData = await getAllKelompokRonda()
+        setKelompokRondaList(Array.isArray(kelompokData) ? kelompokData : [])
       } catch (error) {
         console.error("Gagal memuat data rumah:", error)
       }
@@ -48,6 +50,7 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
     if (initialData && mode === "edit") {
       setFormData({
         idRumah: initialData.idRumah ?? "",
+        idKelompokRonda: (initialData as any).idKelompokRonda ?? "",
         namaLengkap: initialData.namaLengkap ?? "",
         nik: initialData.nik ?? "",
         nomorHp: initialData.nomorHp ?? "",
@@ -57,6 +60,7 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
     } else {
       setFormData({
         idRumah: "",
+        idKelompokRonda: "",
         namaLengkap: "",
         nik: "",
         nomorHp: "",
@@ -68,11 +72,7 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // Debug logging untuk melihat data yang dikirim
-    console.log("DEBUG WARGA FORM - Data yang akan dikirim:", formData)
-    console.log("DEBUG WARGA FORM - Jenis Kelamin:", formData.jenisKelamin)
-    
+
     onSubmit(formData as any)
     onClose()
   }
@@ -87,11 +87,8 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Pilihan Rumah */}
           <div className="space-y-2">
-            <Label htmlFor="rumah">Rumah</Label>
-            <Select
-              value={formData.idRumah}
-              onValueChange={(value) => setFormData({ ...formData, idRumah: value })}
-            >
+            <Label htmlFor="rumah">Rumah (Contoh: Jl. Merdeka No. 1)</Label>
+            <Select value={formData.idRumah} onValueChange={(value) => setFormData({ ...formData, idRumah: value })}>
               <SelectTrigger>
                 <SelectValue placeholder="Pilih rumah" />
               </SelectTrigger>
@@ -105,9 +102,28 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
             </Select>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="kelompokRonda">Kelompok Ronda (Contoh: Kelompok A)</Label>
+            <Select
+              value={formData.idKelompokRonda}
+              onValueChange={(value) => setFormData({ ...formData, idKelompokRonda: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih kelompok ronda" />
+              </SelectTrigger>
+              <SelectContent>
+                {kelompokRondaList.map((kelompok) => (
+                  <SelectItem key={kelompok.id} value={kelompok.id}>
+                    {kelompok.namaKelompok}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Nama Lengkap */}
           <div className="space-y-2">
-            <Label htmlFor="nama">Nama Lengkap</Label>
+            <Label htmlFor="nama">Nama Lengkap (Contoh: Budi Santoso)</Label>
             <Input
               id="nama"
               value={formData.namaLengkap}
@@ -119,7 +135,7 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
 
           {/* NIK */}
           <div className="space-y-2">
-            <Label htmlFor="nik">NIK</Label>
+            <Label htmlFor="nik">NIK (Contoh: 3201234567890123)</Label>
             <Input
               id="nik"
               value={formData.nik}
@@ -132,7 +148,7 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
 
           {/* Nomor HP */}
           <div className="space-y-2">
-            <Label htmlFor="nomorHp">Nomor HP</Label>
+            <Label htmlFor="nomorHp">Nomor HP (Contoh: 081234567890)</Label>
             <Input
               id="nomorHp"
               value={formData.nomorHp}
@@ -159,28 +175,12 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
             </Select>
           </div>
 
-
-
-          {/* Status Aktif */}
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="statusAktif"
-              checked={formData.statusAktif === "Aktif"}
-              onCheckedChange={(checked) =>
-                setFormData({ ...formData, statusAktif: checked ? "Aktif" : "Tidak Aktif" })
-              }
-            />
-            <Label htmlFor="statusAktif">Status Aktif</Label>
-          </div>
-
           {/* Tombol Aksi */}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Batal
             </Button>
-            <Button type="submit">
-              {mode === "create" ? "Tambah" : "Simpan"}
-            </Button>
+            <Button type="submit">{mode === "create" ? "Tambah" : "Simpan"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
