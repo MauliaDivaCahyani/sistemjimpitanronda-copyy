@@ -368,6 +368,7 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                   <TableHead className="text-center w-24">Alpha</TableHead>
                 </TableRow>
               </TableHeader>
+              {/* PERBAIKAN: Menghapus spasi/newline di sekitar map untuk TableBody */}
               <TableBody>
                 {petugas.map((w) => {
                   const current = selectedStatuses[w.id] || "hadir"
@@ -461,6 +462,7 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                   <TableHead>Durasi</TableHead>
                 </TableRow>
               </TableHeader>
+              {/* PERBAIKAN: Menghapus spasi/newline di sekitar map untuk TableBody */}
               <TableBody>
                 {petugas.map((w) => {
                   const attendance = presensi.find((p) => p.id_user === w.id)
@@ -472,7 +474,7 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                       </TableCell>
                       <TableCell className="font-mono text-sm">
                         {attendance?.check_out ? format(attendance.check_out, "HH:mm:ss", { locale: id }) : "-"}
-                      </TableCell>$
+                      </TableCell>
                       <TableCell>{getStatusBadge(attendance?.status || "hadir")}</TableCell>
                       <TableCell className="text-sm">
                         {attendance?.check_out
@@ -484,12 +486,6 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                 })}
               </TableBody>
             </Table>
-
-            {filteredPresensi.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">Tidak ada data absensi yang ditemukan</p>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>

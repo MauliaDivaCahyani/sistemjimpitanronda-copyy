@@ -4,18 +4,34 @@ import { pool } from "../config/database.js";
 export const getAllPetugas = async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT p.id_petugas AS id, w.nama_lengkap AS namaWarga, w.nik, kr.nama_kelompok AS namaKelompok,
-             p.jabatan, p.role, p.status, p.username, p.created_at, p.updated_at
+      SELECT 
+        p.id_petugas AS id,
+        w.nama_lengkap AS namaLengkap,
+        w.nik,
+        kr.nama_kelompok AS alamat, -- di-mapping ke "alamat"
+        p.jabatan,
+        p.role,
+        CASE WHEN p.status = 'Aktif' THEN TRUE ELSE FALSE END AS statusUser,
+        p.username,
+        '' AS password,
+        p.created_at AS createdAt,
+        p.updated_at AS updatedAt
       FROM petugas p
       LEFT JOIN warga w ON p.id_warga = w.id_warga
       LEFT JOIN kelompok_ronda kr ON p.id_kelompok_ronda = kr.id_kelompok_ronda
       ORDER BY p.id_petugas DESC
-    `);
-    res.json({ success: true, data: rows });
+    `)
+
+    res.json({ success: true, data: rows })
   } catch (error) {
-    res.status(500).json({ success: false, message: "Gagal mengambil data petugas", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengambil data petugas",
+      error: error.message,
+    })
   }
-};
+}
+
 
 export const getPetugasById = async (req, res) => {
   try {
