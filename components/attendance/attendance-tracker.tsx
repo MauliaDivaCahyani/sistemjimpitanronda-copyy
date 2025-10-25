@@ -362,7 +362,7 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Petugas</TableHead>
-                  <TableHead>Alamat</TableHead>
+                  <TableHead>Kelompok</TableHead>
                   <TableHead className="text-center w-24">Izin</TableHead>
                   <TableHead className="text-center w-24">Sakit</TableHead>
                   <TableHead className="text-center w-24">Alpha</TableHead>

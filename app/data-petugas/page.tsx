@@ -35,11 +35,10 @@ export default function DataPetugasPage() {
   const fetchPetugas = async () => {
     try {
       const data = await getAllPetugas()
-      // ubah field "status" dari API jadi boolean "statusUser"
       const mappedData = (Array.isArray(data) ? data : []).map((item: any) => ({
         ...item,
         statusUser: item.status?.toLowerCase() === "aktif",
-        namaLengkap: item.namaWarga ?? "Tidak diketahui",
+        namaLengkap: item.namaWarga || item.namaLengkap || "Tidak diketahui",
       }))
 
       setPetugas(mappedData)
