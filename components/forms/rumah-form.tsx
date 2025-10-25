@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,7 +25,7 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
     rt: "",
     rw: "",
     kodeBarcode: "",
-    statusKepemilikan: "milik_sendiri" as "milik_sendiri" | "kontrakan",
+    statusKepemilikan: "milik_sendiri" as "milik_sendiri" | "sewa" | "kontrak",
     idKepalaKeluarga: "",
   })
 
@@ -34,12 +33,10 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
     const fetchWarga = async () => {
       try {
         if (mode === "edit" && initialData?.id) {
-          // Untuk mode edit, ambil detail rumah dengan daftar penghuni
           const rumahDetail = await getRumahById(initialData.id)
-
           const penghuni = Array.isArray(rumahDetail.penghuni)
             ? rumahDetail.penghuni.map((p: any) => ({
-              id: p.id ?? p.idWarga ?? "", // aman untuk dua kemungkinan
+              id: p.id ?? p.idWarga ?? "",
               namaLengkap: p.namaLengkap ?? "",
               nik: p.nik ?? "",
               jenisKelamin: p.jenisKelamin ?? "",
@@ -51,9 +48,7 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
             }))
             : []
           setWargaList(penghuni)
-
         } else {
-          // Untuk mode create, ambil semua warga aktif yang belum punya rumah
           const data = await getAllWarga()
           const aktif = Array.isArray(data)
             ? data.filter((w) => w.statusAktif === "Aktif" && !w.idRumah)
@@ -65,22 +60,16 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
       }
     }
 
-    if (isOpen) {
-      fetchWarga()
-    }
+    if (isOpen) fetchWarga()
   }, [isOpen, mode, initialData])
 
   useEffect(() => {
     if (initialData && mode === "edit") {
-      // Mapping status kepemilikan dari backend ke form
-      let statusMapping: "milik_sendiri" | "kontrakan" = "milik_sendiri";
-      if (initialData.statusKepemilikan) {
-        if (initialData.statusKepemilikan.toLowerCase() === "kontrakan") {
-          statusMapping = "kontrakan";
-        } else {
-          statusMapping = "milik_sendiri";
-        }
-      }
+      // Mapping dari DB ke state frontend
+      let statusMapping: "milik_sendiri" | "sewa" | "kontrak" = "milik_sendiri"
+      const dbStatus = initialData.statusKepemilikan?.toLowerCase()
+      if (dbStatus === "sewa") statusMapping = "sewa"
+      else if (dbStatus === "kontrak") statusMapping = "kontrak"
 
       setFormData({
         alamat: initialData.alamat,
@@ -91,7 +80,6 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
         idKepalaKeluarga: (initialData as any).idKepalaKeluarga?.toString() || "",
       })
     } else {
-      // Generate automatic barcode for new house
       const generateBarcode = () => {
         const timestamp = Date.now().toString().slice(-6)
         return `RMH${timestamp}`
@@ -111,20 +99,19 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    // 🚨 Validasi agar alamat tidak boleh kosong
-    if (!formData.alamat || formData.alamat.trim() === "") {
-      alert("Alamat tidak boleh kosong. Silakan isi alamat rumah terlebih dahulu.")
+    if (!formData.alamat.trim()) {
+      alert("Alamat tidak boleh kosong.")
       return
     }
-
-    // 🚨 (Opsional) Kamu bisa tambahkan validasi lain juga
     if (!formData.rt || !formData.rw) {
       alert("RT dan RW tidak boleh kosong.")
       return
     }
 
-    // Mapping status kepemilikan untuk backend
-    const statusKepemilikanBackend = formData.statusKepemilikan === "milik_sendiri" ? "Milik Sendiri" : "Kontrakan";
+    // Mapping dari state frontend → format MySQL
+    let statusKepemilikanBackend = "Milik Sendiri"
+    if (formData.statusKepemilikan === "sewa") statusKepemilikanBackend = "Sewa"
+    else if (formData.statusKepemilikan === "kontrak") statusKepemilikanBackend = "Kontrak"
 
     const payload = {
       alamat: formData.alamat,
@@ -132,9 +119,10 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
       rw: formData.rw,
       kodeBarcode: formData.kodeBarcode,
       statusKepemilikan: statusKepemilikanBackend,
-      idKepalaKeluarga: formData.idKepalaKeluarga && formData.idKepalaKeluarga !== "none" && formData.idKepalaKeluarga !== "no-data"
-        ? Number(formData.idKepalaKeluarga)
-        : null,
+      idKepalaKeluarga:
+        formData.idKepalaKeluarga && formData.idKepalaKeluarga !== "none" && formData.idKepalaKeluarga !== "no-data"
+          ? Number(formData.idKepalaKeluarga)
+          : null,
     }
 
     onSubmit(payload as any)
@@ -147,7 +135,9 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "Tambah Rumah Baru" : "Edit Data Rumah"}</DialogTitle>
         </DialogHeader>
+
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Alamat */}
           <div className="space-y-2">
             <Label htmlFor="alamat">Alamat</Label>
             <Input
@@ -159,6 +149,7 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
             />
           </div>
 
+          {/* RT/RW */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="rt">RT</Label>
@@ -185,57 +176,37 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
             </div>
           </div>
 
+          {/* Kepala Keluarga */}
           <div className="space-y-2">
             <Label htmlFor="idKepalaKeluarga">
               Kepala Keluarga
-              {mode === "edit" && (
-                <span className="text-sm text-muted-foreground ml-1">
-                  (hanya dari anggota keluarga rumah ini)
-                </span>
-              )}
+              {mode === "edit" && <span className="text-sm text-muted-foreground ml-1">(hanya dari anggota rumah ini)</span>}
             </Label>
             <Select
               value={formData.idKepalaKeluarga}
               onValueChange={(value) => setFormData({ ...formData, idKepalaKeluarga: value })}
             >
               <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    mode === "edit"
-                      ? "Pilih dari anggota keluarga"
-                      : "Pilih kepala keluarga (opsional)"
-                  }
-                />
+                <SelectValue placeholder="Pilih kepala keluarga" />
               </SelectTrigger>
               <SelectContent>
-                {mode === "edit" && (
-                  <SelectItem value="none">Tidak ada kepala keluarga</SelectItem>
-                )}
+                {mode === "edit" && <SelectItem value="none">Tidak ada kepala keluarga</SelectItem>}
                 {wargaList.length > 0 ? (
                   wargaList.map((warga) => (
                     <SelectItem key={warga.id} value={warga.id}>
                       {warga.namaLengkap}
-                      {mode === "edit" && initialData?.idKepalaKeluarga === warga.id && (
-                        <span className="text-xs text-muted-foreground ml-2">(saat ini)</span>
-                      )}
                     </SelectItem>
                   ))
                 ) : (
                   <SelectItem value="no-data" disabled>
-                    {mode === "edit"
-                      ? "Belum ada anggota keluarga di rumah ini"
-                      : "Tidak ada warga yang tersedia"}
+                    Tidak ada data warga
                   </SelectItem>
                 )}
               </SelectContent>
             </Select>
-            {mode === "edit" && wargaList.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Tambahkan warga ke rumah ini terlebih dahulu untuk memilih kepala keluarga
-              </p>
-            )}
           </div>
 
+          {/* Status Kepemilikan */}
           <div className="space-y-2">
             <Label htmlFor="statusKepemilikan">Status Kepemilikan</Label>
             <Select
@@ -247,11 +218,13 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="milik_sendiri">Milik Sendiri</SelectItem>
-                <SelectItem value="kontrakan">Kontrakan</SelectItem>
+                <SelectItem value="sewa">Sewa</SelectItem>
+                <SelectItem value="kontrak">Kontrak</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
+          {/* Barcode */}
           <div className="space-y-2">
             <Label htmlFor="kodeBarcode">Kode Barcode</Label>
             <Input

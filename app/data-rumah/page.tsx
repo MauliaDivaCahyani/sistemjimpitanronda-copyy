@@ -224,7 +224,7 @@ export default function DataRumahPage() {
                             <Badge variant="outline">RT {r.rt || "-"}</Badge>
                             <Badge variant="outline">RW {r.rw || "-"}</Badge>
                             <Badge variant="outline">
-                              {r.statusKepemilikan === "Kontrakan" ? "Kontrakan" : "Milik Sendiri"}
+                              {r.statusKepemilikan === "Kontrak" ? "Kontrakan" : r.statusKepemilikan}
                             </Badge>
                           </div>
                         </div>

@@ -295,7 +295,7 @@ export default function DataPetugasPage() {
 
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Kelompok Ronda:</span>
-                  <span className="font-medium">{getKelompokRondaName((selectedPetugas as any).idKelompokRonda)}</span>
+                  <span className="font-medium">{getKelompokRondaName((selectedPetugas as any).kelompokId)}</span>
                 </div>
               </div>
             </div>

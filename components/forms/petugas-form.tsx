@@ -129,7 +129,7 @@ export function PetugasForm({ isOpen, onClose, onSubmit, initialData, mode }: Pe
     const payload = {
       ...formData,
       statusUser: formData.status === "aktif",
-      ...(mode === "create" && selectedWarga && { namaWarga: selectedWarga.namaLengkap }),
+      kelompokId: formData.idKelompokRonda === "none" ? null : formData.idKelompokRonda,
     }
 
     onSubmit(payload)

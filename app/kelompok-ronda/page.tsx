@@ -23,9 +23,9 @@ import {
   createKelompokRonda,
   updateKelompokRonda,
   deleteKelompokRonda,
-  getAllPetugas,
+  getAnggotaByKelompokId,
 } from "@/lib/database"
-import type { KelompokRonda, User } from "@/types/database"
+import type { KelompokRonda } from "@/types/database"
 
 export default function KelompokRondaPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -33,7 +33,7 @@ export default function KelompokRondaPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [selectedKelompok, setSelectedKelompok] = useState<KelompokRonda | null>(null)
   const [expandedMembers, setExpandedMembers] = useState<Record<string, boolean>>({})
-  const [petugasList, setPetugasList] = useState<User[]>([])
+  const [membersByKelompok, setMembersByKelompok] = useState<Record<string, any[]>>({})
   const [formData, setFormData] = useState({
     namaKelompok: "",
     keteranganKelompok: "",
@@ -45,12 +45,20 @@ export default function KelompokRondaPage() {
       try {
         const data = await getAllKelompokRonda()
         setKelompokRonda(Array.isArray(data) ? data : [])
-        const petugasData = await getAllPetugas()
-        const mappedPetugas = (Array.isArray(petugasData) ? petugasData : []).map((p: any) => ({
-          ...p,
-          idKelompokRonda: p.idKelompokRonda || p.kelompokId || "",
-        }))
-        setPetugasList(mappedPetugas)
+
+        if (Array.isArray(data)) {
+          const membersData: Record<string, any[]> = {}
+          for (const kelompok of data) {
+            try {
+              const members = await getAnggotaByKelompokId(kelompok.id)
+              membersData[kelompok.id] = Array.isArray(members) ? members : []
+            } catch (error) {
+              console.error(`Gagal memuat anggota kelompok ${kelompok.id}:`, error)
+              membersData[kelompok.id] = []
+            }
+          }
+          setMembersByKelompok(membersData)
+        }
       } catch (error) {
         console.error("Gagal memuat data kelompok ronda:", error)
         setKelompokRonda([])
@@ -69,6 +77,7 @@ export default function KelompokRondaPage() {
     await createKelompokRonda(formData)
     setIsAddDialogOpen(false)
     resetForm()
+    window.location.reload()
   }
 
   const handleEdit = (kelompok: KelompokRonda) => {
@@ -85,12 +94,14 @@ export default function KelompokRondaPage() {
       await updateKelompokRonda(selectedKelompok.id, formData)
       setIsEditDialogOpen(false)
       resetForm()
+      window.location.reload()
     }
   }
 
   const handleDelete = async (id: string) => {
     if (confirm("Apakah Anda yakin ingin menghapus kelompok ronda ini?")) {
       await deleteKelompokRonda(id)
+      window.location.reload()
     }
   }
 
@@ -103,8 +114,8 @@ export default function KelompokRondaPage() {
   }
 
   const getMembers = (kelompokId: string) => {
-    const petugasInKelompok = petugasList.filter((p) => (p as any).idKelompokRonda === kelompokId)
-    return petugasInKelompok.length > 0 ? petugasInKelompok.map((p) => p.namaLengkap || p.username || "Unknown") : []
+    const members = membersByKelompok[kelompokId] || []
+    return members.length > 0 ? members.map((m) => m.namaLengkap || m.username || "Unknown") : []
   }
 
   const toggleMemberExpansion = (kelompokId: string) => {

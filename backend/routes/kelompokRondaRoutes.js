@@ -1,18 +1,20 @@
-import express from "express";
+import express from "express"
 import {
   getAllKelompokRonda,
   getKelompokRondaById,
   createKelompokRonda,
   updateKelompokRonda,
   deleteKelompokRonda,
-} from "../controllers/kelompokRondaController.js";
+  getAnggotaByKelompokId,
+} from "../controllers/kelompokRondaController.js"
 
-const router = express.Router();
+const router = express.Router()
 
-router.get("/", getAllKelompokRonda);
-router.get("/:id", getKelompokRondaById);
-router.post("/", createKelompokRonda);
-router.put("/:id", updateKelompokRonda);
-router.delete("/:id", deleteKelompokRonda);
+router.get("/", getAllKelompokRonda)
+router.get("/:id", getKelompokRondaById)
+router.get("/:id/anggota", getAnggotaByKelompokId)
+router.post("/", createKelompokRonda)
+router.put("/:id", updateKelompokRonda)
+router.delete("/:id", deleteKelompokRonda)
 
-export default router;
+export default router
