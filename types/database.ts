@@ -60,12 +60,11 @@ export interface JenisDana {
   id: string
   namaDana: string
   deskripsi: string
-  nominalDefault: number
-  periodeBayar: "harian" | "mingguan" | "bulanan" | "tahunan"
   isActive: boolean
   createdAt: Date
   updatedAt: Date
 }
+
 
 export interface Transaksi {
   id: string

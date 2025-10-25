@@ -321,18 +321,19 @@ export default function DataRumahPage() {
             <div className="space-y-3 max-h-[400px] overflow-y-auto">
               {wargaDetail.length > 0 ? (
                 wargaDetail.map((w, idx) => (
-                  <div key={w.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+                  <div key={w.idWarga} className="flex items-start gap-3 p-3 rounded-lg border bg-card">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
                       {idx + 1}
                     </div>
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-medium text-card-foreground">{w.namaLengkap || w.namaLengkap}</p>
-                        {w.isKepalaKeluarga && (
+                        {w.namaLengkap === rumahDetail?.kepalaKeluarga && (
                           <Badge variant="default" className="text-xs">
                             Kepala Keluarga
                           </Badge>
                         )}
+
                       </div>
                       <div className="text-sm text-muted-foreground space-y-0.5">
                         <p>NIK: {w.nik}</p>

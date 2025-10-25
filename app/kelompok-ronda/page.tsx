@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Search, Plus, Edit, Trash2, Users, Clock, MapPin, ChevronDown, ChevronUp } from "lucide-react"
+import { Search, Plus, Edit, Trash2, Users, ChevronDown, ChevronUp } from "lucide-react"
 import {
   getAllKelompokRonda,
   createKelompokRonda,
@@ -26,19 +26,6 @@ import {
   getAllPetugas,
 } from "@/lib/database"
 import type { KelompokRonda, User } from "@/types/database"
-
-const mockMembers: Record<string, string[]> = {
-  default: [
-    "Budi Santoso",
-    "Ahmad Hidayat",
-    "Siti Nurhaliza",
-    "Joko Widodo",
-    "Rina Susanti",
-    "Agus Setiawan",
-    "Dewi Lestari",
-    "Hendra Gunawan",
-  ],
-}
 
 export default function KelompokRondaPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -51,15 +38,12 @@ export default function KelompokRondaPage() {
     namaKelompok: "",
     keteranganKelompok: "",
   })
-
-  // ✅ FIX: Ambil data async dengan useEffect
   const [kelompokRonda, setKelompokRonda] = useState<KelompokRonda[]>([])
 
   useEffect(() => {
     async function fetchKelompokRonda() {
       try {
         const data = await getAllKelompokRonda()
-        // ✅ Langsung set, karena lib/database.ts sudah mengembalikan array
         setKelompokRonda(Array.isArray(data) ? data : [])
         const petugasData = await getAllPetugas()
         setPetugasList(Array.isArray(petugasData) ? petugasData : [])
@@ -74,7 +58,7 @@ export default function KelompokRondaPage() {
   const filteredKelompok = kelompokRonda.filter(
     (k) =>
       k.namaKelompok.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      k.keteranganKelompok.toLowerCase().includes(searchTerm.toLowerCase()),
+      k.keteranganKelompok.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const handleAdd = async () => {
@@ -114,7 +98,7 @@ export default function KelompokRondaPage() {
     setSelectedKelompok(null)
   }
 
-  const getMembers = (kelompokId: string, kelompokName: string) => {
+  const getMembers = (kelompokId: string) => {
     const petugasInKelompok = petugasList.filter((p) => (p as any).idKelompokRonda === kelompokId)
     return petugasInKelompok.length > 0 ? petugasInKelompok.map((p) => p.namaLengkap || p.username || "Unknown") : []
   }
@@ -128,6 +112,7 @@ export default function KelompokRondaPage() {
 
   return (
     <DashboardLayout title="Kelompok Ronda">
+      {/* Search + Add Button */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -186,6 +171,7 @@ export default function KelompokRondaPage() {
         </Dialog>
       </div>
 
+      {/* List Kelompok */}
       <Card>
         <CardHeader>
           <CardTitle>Daftar Kelompok Ronda</CardTitle>
@@ -194,7 +180,7 @@ export default function KelompokRondaPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredKelompok.map((kelompok) => {
-              const members = getMembers(kelompok.id, kelompok.namaKelompok)
+              const members = getMembers(kelompok.id)
               const isExpanded = expandedMembers[kelompok.id]
 
               return (
@@ -233,15 +219,6 @@ export default function KelompokRondaPage() {
                         )}
                       </div>
                     )}
-
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Clock className="h-4 w-4 mr-2" />
-                      <span>Jadwal: {kelompok.jadwalHari || "-"}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      <span>Area: RT 01-03</span>
-                    </div>
                   </div>
 
                   <div className="flex space-x-2">
@@ -265,7 +242,7 @@ export default function KelompokRondaPage() {
                   </div>
                 </div>
               )
-            })}
+            })} {/* ✅ Kurung penutup map */}
           </div>
         </CardContent>
       </Card>
