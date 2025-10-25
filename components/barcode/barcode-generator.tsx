@@ -28,7 +28,13 @@ export function BarcodeGenerator({ rumah }: BarcodeGeneratorProps) {
       const barcodeData = generateBarcodeData(rumahData.id, rumahData.alamat)
       const url = generateBarcodeUrl(barcodeData)
 
-      await updateRumah(rumahData.id, { kodeBarcode: barcodeData })
+      await updateRumah(rumahData.id, {
+        alamat: rumahData.alamat,
+        rt: rumahData.rt,
+        rw: rumahData.rw,
+        kodeBarcode: barcodeData,
+      })
+      
 
       setSelectedRumah(rumahData)
       setGeneratedBarcode(barcodeData)
