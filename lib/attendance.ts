@@ -1,6 +1,7 @@
 import type { Presensi } from "@/types/database"
+import { createPresensi, updatePresensi, getTodayPresensi } from "@/lib/database"
 
-// Mock attendance data
+// Mock attendance data (untuk fallback jika API tidak tersedia)
 const mockPresensi: Presensi[] = [
   {
     id: "1",
@@ -71,26 +72,49 @@ export interface AttendanceSummary {
 
 // Get attendance records with filters
 export const getPresensi = async (filter?: AttendanceFilter): Promise<Presensi[]> => {
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  try {
+    const todayPresensi = await getTodayPresensi()
 
-  let filteredPresensi = [...mockPresensi]
+    let filteredPresensi = [...todayPresensi]
 
-  if (filter) {
-    if (filter.startDate) {
-      filteredPresensi = filteredPresensi.filter((p) => p.tanggal >= filter.startDate!)
+    if (filter) {
+      if (filter.startDate) {
+        filteredPresensi = filteredPresensi.filter((p) => new Date(p.tanggal) >= filter.startDate!)
+      }
+      if (filter.endDate) {
+        filteredPresensi = filteredPresensi.filter((p) => new Date(p.tanggal) <= filter.endDate!)
+      }
+      if (filter.id_user) {
+        filteredPresensi = filteredPresensi.filter((p) => p.id_user === filter.id_user)
+      }
+      if (filter.status) {
+        filteredPresensi = filteredPresensi.filter((p) => p.status === filter.status)
+      }
     }
-    if (filter.endDate) {
-      filteredPresensi = filteredPresensi.filter((p) => p.tanggal <= filter.endDate!)
+
+    return filteredPresensi.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
+  } catch (error) {
+    console.error("Error fetching attendance from backend:", error)
+    // Fallback to mock data
+    let filteredPresensi = [...mockPresensi]
+
+    if (filter) {
+      if (filter.startDate) {
+        filteredPresensi = filteredPresensi.filter((p) => p.tanggal >= filter.startDate!)
+      }
+      if (filter.endDate) {
+        filteredPresensi = filteredPresensi.filter((p) => p.tanggal <= filter.endDate!)
+      }
+      if (filter.id_user) {
+        filteredPresensi = filteredPresensi.filter((p) => p.id_user === filter.id_user)
+      }
+      if (filter.status) {
+        filteredPresensi = filteredPresensi.filter((p) => p.status === filter.status)
+      }
     }
-    if (filter.id_user) {
-      filteredPresensi = filteredPresensi.filter((p) => p.id_user === filter.id_user)
-    }
-    if (filter.status) {
-      filteredPresensi = filteredPresensi.filter((p) => p.status === filter.status)
-    }
+
+    return filteredPresensi.sort((a, b) => b.tanggal.getTime() - a.tanggal.getTime())
   }
-
-  return filteredPresensi.sort((a, b) => b.tanggal.getTime() - a.tanggal.getTime())
 }
 
 // Get attendance summary
@@ -190,39 +214,76 @@ export const markAttendance = async (
   id_user: string,
   status: "hadir" | "izin" | "sakit" | "alpha",
   markedBy: string,
+  checkInTime?: Date,
 ): Promise<Presensi> => {
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+  await new Promise((resolve) => setTimeout(resolve, 500))
 
-  const today = new Date()
-  const existingAttendance = await getTodayAttendance(id_user)
+  try {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
 
-  if (existingAttendance) {
-    // Update existing attendance
-    const index = mockPresensi.findIndex((p) => p.id === existingAttendance.id)
-    if (index !== -1) {
-      mockPresensi[index] = {
-        ...mockPresensi[index],
+    // Try to get existing attendance from backend
+    const todayPresensi = await getTodayPresensi()
+    const existingAttendance = todayPresensi.find((p) => p.id_user === id_user)
+
+    if (existingAttendance) {
+      // Update existing attendance
+      const updated = await updatePresensi(existingAttendance.id, {
         status,
-        updatedAt: new Date(),
-      }
-      return mockPresensi[index]
+        check_in: checkInTime || existingAttendance.check_in,
+      })
+      return updated
     }
-  }
 
-  // Create new attendance record
-  const newAttendance: Presensi = {
-    id: (mockPresensi.length + 1).toString(),
-    id_user,
-    check_in: status === "hadir" ? new Date() : new Date(), // Set check-in time even for non-present status
-    check_out: null,
-    tanggal: today,
-    status,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  }
+    // Create new attendance record
+    const newAttendance = await createPresensi({
+      id_user,
+      check_in: checkInTime || new Date(),
+      check_out: null,
+      tanggal: today,
+      status,
+    })
 
-  mockPresensi.push(newAttendance)
-  return newAttendance
+    return newAttendance
+  } catch (error) {
+    console.error("Error saving attendance to backend:", error)
+    // Fallback to mock data if API fails
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const existingAttendance = mockPresensi.find((p) => {
+      const attendanceDate = new Date(p.tanggal)
+      attendanceDate.setHours(0, 0, 0, 0)
+      return p.id_user === id_user && attendanceDate.getTime() === today.getTime()
+    })
+
+    if (existingAttendance) {
+      const index = mockPresensi.findIndex((p) => p.id === existingAttendance.id)
+      if (index !== -1) {
+        mockPresensi[index] = {
+          ...mockPresensi[index],
+          status,
+          check_in: checkInTime || mockPresensi[index].check_in,
+          updatedAt: new Date(),
+        }
+        return mockPresensi[index]
+      }
+    }
+
+    const newAttendance: Presensi = {
+      id: (mockPresensi.length + 1).toString(),
+      id_user,
+      check_in: checkInTime || new Date(),
+      check_out: null,
+      tanggal: today,
+      status,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    mockPresensi.push(newAttendance)
+    return newAttendance
+  }
 }
 
 // Get current active session

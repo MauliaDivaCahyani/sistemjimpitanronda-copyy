@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Clock, CheckCircle, XCircle, MapPin, Users, Timer, UserCheck } from "lucide-react"
+import { Clock, UserCheck } from "lucide-react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
 import {
@@ -39,6 +39,7 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
   const [petugas, setPetugas] = useState<Petugas[]>([])
   const [presensi, setPresensi] = useState<Presensi[]>([])
   const [selectedStatuses, setSelectedStatuses] = useState<Record<string, "hadir" | "izin" | "sakit" | "alpha">>({})
+  const [checkInTimes, setCheckInTimes] = useState<Record<string, Date>>({})
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,6 +55,17 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
         setCurrentSession(session)
         setPetugas(PetugasData.filter((w) => w.statusUser))
         setPresensi(presensiData)
+
+        const statusMap: Record<string, "hadir" | "izin" | "sakit" | "alpha"> = {}
+        const checkInMap: Record<string, Date> = {}
+        presensiData.forEach((p) => {
+          statusMap[p.id_user] = p.status
+          if (p.check_in) {
+            checkInMap[p.id_user] = new Date(p.check_in)
+          }
+        })
+        setSelectedStatuses(statusMap)
+        setCheckInTimes(checkInMap)
       } catch (err) {
         setError("Gagal memuat data absensi")
       } finally {
@@ -99,12 +111,20 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
   }
 
   // ================== FUNCTION ABSENSI PETUGAS ==================
-  const handleCheckboxChange = (idPetugas: string, status: "izin" | "sakit" | "alpha", checked: boolean) => {
+  const handleCheckboxChange = (idPetugas: string, status: "hadir" | "izin" | "sakit" | "alpha", checked: boolean) => {
     setSelectedStatuses((prev) => {
       const next = { ...prev }
       next[idPetugas] = checked ? status : "hadir"
       return next
     })
+
+    // Jika status hadir dipilih, simpan waktu saat ini
+    if (checked && status === "hadir") {
+      setCheckInTimes((prev) => ({
+        ...prev,
+        [idPetugas]: new Date(),
+      }))
+    }
   }
 
   const handleSaveAll = async () => {
@@ -115,12 +135,15 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
       await Promise.all(
         petugas.map((w) => {
           const status = selectedStatuses[w.id] || "hadir"
-          return markAttendance(w.id, status, user.id)
+          const checkInTime = checkInTimes[w.id]
+          return markAttendance(w.id, status, user.id, checkInTime)
         }),
       )
       setSuccess("Absensi berhasil disimpan untuk semua petugas aktif")
       const newPresensi = await getPresensi({ startDate: new Date(), endDate: new Date() })
       setPresensi(newPresensi)
+      setSelectedStatuses({})
+      setCheckInTimes({})
     } catch (err) {
       setError("Gagal menyimpan absensi massal")
     } finally {
@@ -166,9 +189,8 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
   }
 
   // Filter data presensi hari ini saja
-  const filteredPresensi = presensi.filter(
-    (p) => new Date(p.check_in).toDateString() === new Date().toDateString(),
-  )
+  const filteredPresensi = presensi.filter((p) => new Date(p.check_in).toDateString() === new Date().toDateString())
+
   return (
     <div className="space-y-6">
       {/* Current Time & Session Info */}
@@ -215,135 +237,12 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
         </CardContent>
       </Card>
 
-      {/* Attendance Actions */}
+      {/* Mark Attendance Form */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Absensi Hari Ini
-          </CardTitle>
-          <CardDescription>Check-in dan check-out untuk sesi ronda</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Current Status */}
-          {todayAttendance ? (
-            <div className="p-4 bg-muted rounded-lg">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span className="font-medium">Status: Sudah Absen</span>
-                </div>
-                <Badge variant="default" className="bg-green-500">
-                  {todayAttendance.status === "hadir" ? "Hadir" : todayAttendance.status.toUpperCase()}
-                </Badge>
-              </div>
-
-              <div className="grid gap-2 md:grid-cols-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Check-in: </span>
-                  <span className="font-mono">{formatTime(todayAttendance.check_in)}</span>
-                </div>
-                {todayAttendance.check_out ? (
-                  <div>
-                    <span className="text-muted-foreground">Check-out: </span>
-                    <span className="font-mono">{formatTime(todayAttendance.check_out)}</span>
-                  </div>
-                ) : (
-                  <div>
-                    <span className="text-muted-foreground">Check-out: </span>
-                    <span className="text-yellow-600">Belum check-out</span>
-                  </div>
-                )}
-                <div className="md:col-span-2">
-                  <span className="text-muted-foreground">Durasi: </span>
-                  <span>{calculateWorkDuration(todayAttendance.check_in, todayAttendance.check_out)}</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="p-4 bg-muted rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <XCircle className="h-5 w-5 text-red-500" />
-                <span className="font-medium">Status: Belum Absen</span>
-              </div>
-              <p className="text-sm text-muted-foreground">Anda belum melakukan absensi hari ini</p>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            {!todayAttendance ? (
-              <Button onClick={handleCheckIn} disabled={actionLoading || !currentSession} className="flex-1">
-                {actionLoading ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-2"></div>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Check-in
-                  </>
-                )}
-              </Button>
-            ) : !todayAttendance.check_out ? (
-              <Button
-                onClick={handleCheckOut}
-                disabled={actionLoading}
-                variant="outline"
-                className="flex-1 bg-transparent"
-              >
-                {actionLoading ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2"></div>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Timer className="h-4 w-4 mr-2" />
-                    Check-out
-                  </>
-                )}
-              </Button>
-            ) : (
-              <div className="flex-1 text-center py-2 text-muted-foreground">Absensi hari ini sudah lengkap</div>
-            )}
-          </div>
-
-          {/* Restrictions Info */}
-          {!currentSession && (
-            <Alert>
-              <MapPin className="h-4 w-4" />
-              <AlertDescription>
-                Absensi hanya dapat dilakukan saat sesi ronda aktif (19:00 - 06:00) dan harus dilakukan di pos ronda.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Error/Success Messages */}
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {success && (
-            <Alert className="border-green-200 bg-green-50">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">{success}</AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
-
- {/* Mark Attendance Form */}
- <Card>
         <CardHeader className="flex items-center justify-between">
           <div>
             <CardTitle>Tandai Absensi Petugas</CardTitle>
-            <CardDescription>
-              Tandai kehadiran semua Petugas (cek salah satu: izin, sakit, alpha). Jika tidak diceklis berarti hadir.
-            </CardDescription>
+            <CardDescription>Tandai kehadiran semua Petugas. Jika tidak diceklis berarti hadir.</CardDescription>
           </div>
           <Button onClick={handleSaveAll} disabled={actionLoading || petugas.length === 0}>
             {actionLoading ? (
@@ -362,13 +261,13 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Petugas</TableHead>
-                  <TableHead>Kelompok</TableHead>
+                  <TableHead>Alamat</TableHead>
+                  <TableHead className="text-center w-24">Hadir</TableHead>
                   <TableHead className="text-center w-24">Izin</TableHead>
                   <TableHead className="text-center w-24">Sakit</TableHead>
                   <TableHead className="text-center w-24">Alpha</TableHead>
                 </TableRow>
               </TableHeader>
-              {/* PERBAIKAN: Menghapus spasi/newline di sekitar map untuk TableBody */}
               <TableBody>
                 {petugas.map((w) => {
                   const current = selectedStatuses[w.id] || "hadir"
@@ -376,6 +275,19 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                     <TableRow key={w.id}>
                       <TableCell className="font-medium">{w.namaLengkap}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{w.alamat}</TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            checked={current === "hadir"}
+                            onCheckedChange={(c) => handleCheckboxChange(w.id, "hadir", Boolean(c))}
+                            aria-label={`Tandai ${w.namaLengkap} hadir`}
+                            className="h-5 w-5 rounded-md border-2 border-foreground/40 transition-colors
+                                     hover:border-foreground/60
+                                     data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground
+                                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ring-offset-background"
+                          />
+                        </div>
+                      </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center">
                           <Checkbox
@@ -442,8 +354,8 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
         </CardContent>
       </Card>
 
-  {/* Attendance Table */}
-  <Card>
+      {/* Attendance Table */}
+      <Card>
         <CardHeader>
           <CardTitle>Daftar Absensi</CardTitle>
           <CardDescription>
@@ -457,30 +369,21 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                 <TableRow>
                   <TableHead>Petugas</TableHead>
                   <TableHead>Check-in</TableHead>
-                  <TableHead>Check-out</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Durasi</TableHead>
                 </TableRow>
               </TableHeader>
-              {/* PERBAIKAN: Menghapus spasi/newline di sekitar map untuk TableBody */}
               <TableBody>
                 {petugas.map((w) => {
                   const attendance = presensi.find((p) => p.id_user === w.id)
+                  const displayStatus = selectedStatuses[w.id] || attendance?.status || "hadir"
+                  const checkInTime = checkInTimes[w.id] || attendance?.check_in
                   return (
                     <TableRow key={w.id}>
                       <TableCell className="font-medium">{w.namaLengkap}</TableCell>
                       <TableCell className="font-mono text-sm">
-                        {attendance?.check_in ? format(attendance.check_in, "HH:mm:ss", { locale: id }) : "-"}
+                        {checkInTime ? format(checkInTime, "HH:mm:ss", { locale: id }) : "-"}
                       </TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {attendance?.check_out ? format(attendance.check_out, "HH:mm:ss", { locale: id }) : "-"}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(attendance?.status || "hadir")}</TableCell>
-                      <TableCell className="text-sm">
-                        {attendance?.check_out
-                          ? `${Math.floor((attendance.check_out.getTime() - attendance.check_in.getTime()) / (1000 * 60 * 60))} jam`
-                          : "Sedang bertugas"}
-                      </TableCell>
+                      <TableCell>{getStatusBadge(displayStatus)}</TableCell>
                     </TableRow>
                   )
                 })}
@@ -499,15 +402,15 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
           <div className="space-y-2 text-sm">
             <div className="flex items-start gap-2">
               <div className="h-2 w-2 rounded-full bg-primary mt-2"></div>
-              <span>Absensi hanya dapat dilakukan saat datang ke pos ronda</span>
+              <span>Tandai status kehadiran petugas dengan checkbox yang tersedia</span>
             </div>
             <div className="flex items-start gap-2">
               <div className="h-2 w-2 rounded-full bg-primary mt-2"></div>
-              <span>Waktu absensi: 19:00 - 06:00 (sesi ronda malam)</span>
+              <span>Waktu check-in akan otomatis terisi saat Anda menandai petugas hadir</span>
             </div>
             <div className="flex items-start gap-2">
               <div className="h-2 w-2 rounded-full bg-primary mt-2"></div>
-              <span>Tidak dapat mengubah tanggal absensi (hanya hari ini)</span>
+              <span>Klik tombol "Simpan Absensi" untuk menyimpan semua data</span>
             </div>
             <div className="flex items-start gap-2">
               <div className="h-2 w-2 rounded-full bg-primary mt-2"></div>

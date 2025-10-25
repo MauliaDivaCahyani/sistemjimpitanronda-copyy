@@ -59,7 +59,6 @@ export async function deleteRumah(id: string): Promise<void> {
   await apiRequest(`rumah/${id}`, { method: "DELETE" })
 }
 
-
 /* ==================== WARGA ==================== */
 export async function getAllWarga(): Promise<Warga[]> {
   return apiRequest<Warga[]>("warga")
@@ -196,6 +195,29 @@ export async function getTransaksiByWarga(id_warga: string): Promise<Transaksi[]
 /* ==================== PRESENSI ==================== */
 export async function getAllPresensi(): Promise<Presensi[]> {
   return apiRequest<Presensi[]>("presensi")
+}
+
+export async function createPresensi(data: Omit<Presensi, "id" | "createdAt" | "updatedAt">): Promise<Presensi | any> {
+  return apiRequest<any>("presensi", {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updatePresensi(id: string, data: Partial<Presensi>): Promise<Presensi | any> {
+  return apiRequest<any>(`presensi/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  })
+}
+
+export async function getTodayPresensi(): Promise<Presensi[]> {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  return apiRequest<Presensi[]>(`presensi?startDate=${today.toISOString()}&endDate=${tomorrow.toISOString()}`)
 }
 
 // Alias agar tetap bisa pakai nama pendek
