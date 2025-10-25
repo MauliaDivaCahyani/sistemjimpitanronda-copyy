@@ -10,14 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Filter, Download, Search, Lock } from "lucide-react"
+import { CalendarIcon, Filter, Download, Search, Lock, Plus } from "lucide-react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import { getTransaksi, getTransactionSummary } from "@/lib/transactions"
+import { getTransaksi, getTransactionSummary, createTransaksi } from "@/lib/transactions"
 import { getWarga, getJenisDana } from "@/lib/database"
 import type { Transaksi, Warga, JenisDana } from "@/types/database"
 import type { TransactionFilter, TransactionSummary } from "@/lib/transactions"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ManualTransactionForm } from "./manual-transaction-form"
+import { toast } from "@/hooks/use-toast"
 
 export function TransactionList() {
   const [transaksi, setTransaksi] = useState<Transaksi[]>([])
@@ -27,6 +29,7 @@ export function TransactionList() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<TransactionFilter>({ status_jimpitan: "all" })
   const [searchTerm, setSearchTerm] = useState("")
+  const [isManualFormOpen, setIsManualFormOpen] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -59,6 +62,27 @@ export function TransactionList() {
   const clearFilters = () => {
     setFilter({ status_jimpitan: "all" })
     setSearchTerm("")
+  }
+
+  const handleManualTransactionSubmit = async (data: any) => {
+    try {
+      await createTransaksi(data)
+      toast({
+        title: "Berhasil",
+        description: "Transaksi berhasil ditambahkan",
+      })
+      // Refresh data
+      const [transaksiData, summaryData] = await Promise.all([getTransaksi(filter), getTransactionSummary(filter)])
+      setTransaksi(transaksiData)
+      setSummary(summaryData)
+      setIsManualFormOpen(false)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal menambahkan transaksi",
+        variant: "destructive",
+      })
+    }
   }
 
   const getWargaName = (id_warga: string) => {
@@ -155,11 +179,19 @@ export function TransactionList() {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filter Transaksi
-          </CardTitle>
-          <CardDescription>Filter transaksi berdasarkan tanggal, warga, atau jenis dana</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filter Transaksi
+              </CardTitle>
+              <CardDescription>Filter transaksi berdasarkan tanggal, warga, atau jenis dana</CardDescription>
+            </div>
+            <Button onClick={() => setIsManualFormOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Input Manual
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -306,6 +338,12 @@ export function TransactionList() {
           </div>
         </CardContent>
       </Card>
+
+      <ManualTransactionForm
+        isOpen={isManualFormOpen}
+        onClose={() => setIsManualFormOpen(false)}
+        onSubmit={handleManualTransactionSubmit}
+      />
     </div>
   )
 }

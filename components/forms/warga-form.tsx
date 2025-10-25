@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { getAllRumah, getAllKelompokRonda } from "@/lib/database"
+import { getAllRumah } from "@/lib/database"
 import type { Warga, Rumah, KelompokRonda } from "@/types/database"
 
 interface WargaFormProps {
@@ -23,7 +23,6 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
   const [kelompokRondaList, setKelompokRondaList] = useState<KelompokRonda[]>([])
   const [formData, setFormData] = useState({
     idRumah: "",
-    idKelompokRonda: "",
     namaLengkap: "",
     nik: "",
     nomorHp: "",
@@ -36,8 +35,6 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
       try {
         const rumahData = await getAllRumah()
         setRumahList(Array.isArray(rumahData) ? rumahData : [])
-        const kelompokData = await getAllKelompokRonda()
-        setKelompokRondaList(Array.isArray(kelompokData) ? kelompokData : [])
       } catch (error) {
         console.error("Gagal memuat data rumah:", error)
       }
@@ -50,7 +47,6 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
     if (initialData && mode === "edit") {
       setFormData({
         idRumah: initialData.idRumah ?? "",
-        idKelompokRonda: (initialData as any).idKelompokRonda ?? "",
         namaLengkap: initialData.namaLengkap ?? "",
         nik: initialData.nik ?? "",
         nomorHp: initialData.nomorHp ?? "",
@@ -60,7 +56,6 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
     } else {
       setFormData({
         idRumah: "",
-        idKelompokRonda: "",
         namaLengkap: "",
         nik: "",
         nomorHp: "",
@@ -96,25 +91,6 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
                 {rumahList.map((rumah) => (
                   <SelectItem key={rumah.id} value={rumah.id}>
                     {rumah.alamat} (RT {rumah.rt}/RW {rumah.rw})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="kelompokRonda">Kelompok Ronda (Contoh: Kelompok A)</Label>
-            <Select
-              value={formData.idKelompokRonda}
-              onValueChange={(value) => setFormData({ ...formData, idKelompokRonda: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih kelompok ronda" />
-              </SelectTrigger>
-              <SelectContent>
-                {kelompokRondaList.map((kelompok) => (
-                  <SelectItem key={kelompok.id} value={kelompok.id}>
-                    {kelompok.namaKelompok}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -171,6 +147,22 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
               <SelectContent>
                 <SelectItem value="Laki-laki">Laki-laki</SelectItem>
                 <SelectItem value="Perempuan">Perempuan</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="statusAktif">Status</Label>
+            <Select
+              value={formData.statusAktif}
+              onValueChange={(value) => setFormData({ ...formData, statusAktif: value as "Aktif" | "Tidak Aktif" })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Aktif">Aktif</SelectItem>
+                <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
               </SelectContent>
             </Select>
           </div>

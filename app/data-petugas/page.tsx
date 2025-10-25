@@ -14,12 +14,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Plus, Eye, Edit, Trash2 } from "lucide-react"
-import { getAllPetugas, createPetugas, updatePetugas, deletePetugas } from "@/lib/database"
+import { getAllPetugas, createPetugas, updatePetugas, deletePetugas, getAllKelompokRonda } from "@/lib/database"
 import { PetugasForm } from "@/components/forms/petugas-form"
 import { toast } from "@/hooks/use-toast"
 import type { User } from "@/types/database"
@@ -31,7 +28,7 @@ export default function DataPetugasPage() {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [selectedPetugas, setSelectedPetugas] = useState<User | null>(null)
   const [formMode, setFormMode] = useState<"create" | "edit">("create")
-
+  const [kelompokRondaList, setKelompokRondaList] = useState<any[]>([])
 
   const [petugas, setPetugas] = useState<User[]>([])
 
@@ -52,10 +49,18 @@ export default function DataPetugasPage() {
     }
   }
 
-
+  const fetchKelompokRonda = async () => {
+    try {
+      const data = await getAllKelompokRonda()
+      setKelompokRondaList(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error("Gagal memuat kelompok ronda:", err)
+    }
+  }
 
   useEffect(() => {
     fetchPetugas()
+    fetchKelompokRonda()
   }, [])
 
   const filteredPetugas = petugas.filter(
@@ -64,6 +69,11 @@ export default function DataPetugasPage() {
       p.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.jabatan?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  const getKelompokRondaName = (kelompokId: string) => {
+    const kelompok = kelompokRondaList.find((k) => k.id === kelompokId)
+    return kelompok ? kelompok.namaKelompok : "Tidak ada"
+  }
 
   const handleCreate = () => {
     setFormMode("create")
@@ -82,7 +92,7 @@ export default function DataPetugasPage() {
       } else if (selectedPetugas) {
         await updatePetugas(selectedPetugas.id, data)
         toast({
-          title: "Berhasil", 
+          title: "Berhasil",
           description: "Data petugas berhasil diperbarui",
         })
       }
@@ -283,6 +293,11 @@ export default function DataPetugasPage() {
                         : "Petugas"}
                   </span>
                 </div>
+
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Kelompok Ronda:</span>
+                  <span className="font-medium">{getKelompokRondaName((selectedPetugas as any).idKelompokRonda)}</span>
+                </div>
               </div>
             </div>
           )}
@@ -303,7 +318,6 @@ export default function DataPetugasPage() {
         </DialogContent>
       </Dialog>
 
-      
       <PetugasForm
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}

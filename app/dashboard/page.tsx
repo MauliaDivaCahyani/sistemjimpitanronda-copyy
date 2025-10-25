@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Users, Building2, Wallet, TrendingUp, Clock, QrCode, Receipt } from "lucide-react"
+import { getAllKelompokRonda } from "@/lib/database"
 import type { User } from "@/types/auth"
 
 interface DashboardStats {
@@ -23,6 +24,11 @@ const getGreeting = () => {
   return "Selamat malam"
 }
 
+const getDayName = (date: Date) => {
+  const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"]
+  return days[date.getDay()]
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
   const [stats, setStats] = useState<DashboardStats>({
@@ -33,6 +39,8 @@ export default function DashboardPage() {
     absensiHariIni: 0,
     transaksiHariIni: 0,
   })
+  const [kelompokRondaList, setKelompokRondaList] = useState<any[]>([])
+  const [userKelompok, setUserKelompok] = useState<any>(null)
 
   useEffect(() => {
     const savedUser = localStorage.getItem("currentUser")
@@ -49,7 +57,25 @@ export default function DashboardPage() {
       absensiHariIni: 8,
       transaksiHariIni: 25,
     })
+
+    const fetchKelompokRonda = async () => {
+      try {
+        const data = await getAllKelompokRonda()
+        setKelompokRondaList(Array.isArray(data) ? data : [])
+      } catch (error) {
+        console.error("Gagal memuat kelompok ronda:", error)
+      }
+    }
+
+    fetchKelompokRonda()
   }, [])
+
+  useEffect(() => {
+    if (user && (user as any).idKelompokRonda && kelompokRondaList.length > 0) {
+      const kelompok = kelompokRondaList.find((k) => k.id === (user as any).idKelompokRonda)
+      setUserKelompok(kelompok)
+    }
+  }, [user, kelompokRondaList])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -224,6 +250,28 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Kelompok Ronda Hari Ini</CardTitle>
+            <CardDescription>
+              {getDayName(new Date())}, {new Date().toLocaleDateString("id-ID")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {userKelompok ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{userKelompok.namaKelompok}</span>
+                  <Badge className="bg-emerald-500">Aktif</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{userKelompok.keteranganKelompok}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Anda tidak terdaftar dalam kelompok ronda manapun</p>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Jadwal Ronda</CardTitle>

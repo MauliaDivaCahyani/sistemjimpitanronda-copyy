@@ -46,7 +46,11 @@ export default function KelompokRondaPage() {
         const data = await getAllKelompokRonda()
         setKelompokRonda(Array.isArray(data) ? data : [])
         const petugasData = await getAllPetugas()
-        setPetugasList(Array.isArray(petugasData) ? petugasData : [])
+        const mappedPetugas = (Array.isArray(petugasData) ? petugasData : []).map((p: any) => ({
+          ...p,
+          idKelompokRonda: p.idKelompokRonda || p.kelompokId || "",
+        }))
+        setPetugasList(mappedPetugas)
       } catch (error) {
         console.error("Gagal memuat data kelompok ronda:", error)
         setKelompokRonda([])
@@ -58,7 +62,7 @@ export default function KelompokRondaPage() {
   const filteredKelompok = kelompokRonda.filter(
     (k) =>
       k.namaKelompok.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      k.keteranganKelompok.toLowerCase().includes(searchTerm.toLowerCase())
+      k.keteranganKelompok.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   const handleAdd = async () => {
@@ -242,7 +246,7 @@ export default function KelompokRondaPage() {
                   </div>
                 </div>
               )
-            })} {/* ✅ Kurung penutup map */}
+            })}
           </div>
         </CardContent>
       </Card>

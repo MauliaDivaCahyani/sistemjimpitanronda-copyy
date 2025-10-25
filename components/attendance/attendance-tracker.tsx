@@ -3,17 +3,24 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Clock, CheckCircle, XCircle, MapPin, Users, Timer } from "lucide-react"
+import { Clock, CheckCircle, XCircle, MapPin, Users, Timer, UserCheck } from "lucide-react"
+import { format } from "date-fns"
+import { id } from "date-fns/locale"
 import {
   getTodayAttendance,
   checkInAttendance,
   checkOutAttendance,
   getCurrentSession,
+  getPresensi,
+  markAttendance,
   type AttendanceSession,
 } from "@/lib/attendance"
-import type { Presensi, User } from "@/types/database"
+import { getAllPetugas } from "@/lib/database"
+import type { Presensi, User, Petugas } from "@/types/database"
 
 interface AttendanceTrackerProps {
   user: User
@@ -28,13 +35,25 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
   const [success, setSuccess] = useState("")
   const [currentTime, setCurrentTime] = useState(new Date())
 
+  // tambahan dari attendance-management
+  const [petugas, setPetugas] = useState<Petugas[]>([])
+  const [presensi, setPresensi] = useState<Presensi[]>([])
+  const [selectedStatuses, setSelectedStatuses] = useState<Record<string, "hadir" | "izin" | "sakit" | "alpha">>({})
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [attendance, session] = await Promise.all([getTodayAttendance(user.id), getCurrentSession()])
+        const [attendance, session, PetugasData, presensiData] = await Promise.all([
+          getTodayAttendance(user.id),
+          getCurrentSession(),
+          getAllPetugas(),
+          getPresensi({ startDate: new Date(), endDate: new Date() }),
+        ])
 
         setTodayAttendance(attendance)
         setCurrentSession(session)
+        setPetugas(PetugasData.filter((w) => w.statusUser))
+        setPresensi(presensiData)
       } catch (err) {
         setError("Gagal memuat data absensi")
       } finally {
@@ -44,19 +63,15 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
 
     fetchData()
 
-    // Update current time every second
-    const timeInterval = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 1000)
-
+    const timeInterval = setInterval(() => setCurrentTime(new Date()), 1000)
     return () => clearInterval(timeInterval)
   }, [user.id])
 
+  // ================== FUNCTION CHECK-IN & CHECK-OUT ==================
   const handleCheckIn = async () => {
     setActionLoading(true)
     setError("")
     setSuccess("")
-
     try {
       const attendance = await checkInAttendance(user.id)
       setTodayAttendance(attendance)
@@ -72,7 +87,6 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
     setActionLoading(true)
     setError("")
     setSuccess("")
-
     try {
       const attendance = await checkOutAttendance(user.id)
       setTodayAttendance(attendance)
@@ -84,21 +98,49 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
     }
   }
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("id-ID", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
+  // ================== FUNCTION ABSENSI PETUGAS ==================
+  const handleCheckboxChange = (idPetugas: string, status: "izin" | "sakit" | "alpha", checked: boolean) => {
+    setSelectedStatuses((prev) => {
+      const next = { ...prev }
+      next[idPetugas] = checked ? status : "hadir"
+      return next
     })
   }
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("id-ID", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
+  const handleSaveAll = async () => {
+    setActionLoading(true)
+    setError("")
+    setSuccess("")
+    try {
+      await Promise.all(
+        petugas.map((w) => {
+          const status = selectedStatuses[w.id] || "hadir"
+          return markAttendance(w.id, status, user.id)
+        }),
+      )
+      setSuccess("Absensi berhasil disimpan untuk semua petugas aktif")
+      const newPresensi = await getPresensi({ startDate: new Date(), endDate: new Date() })
+      setPresensi(newPresensi)
+    } catch (err) {
+      setError("Gagal menyimpan absensi massal")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      hadir: { variant: "default" as const, className: "bg-green-500", label: "Hadir" },
+      izin: { variant: "secondary" as const, className: "bg-blue-500", label: "Izin" },
+      sakit: { variant: "secondary" as const, className: "bg-yellow-500", label: "Sakit" },
+      alpha: { variant: "destructive" as const, className: "bg-red-500", label: "Alpha" },
+    }
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.alpha
+    return (
+      <Badge variant={config.variant} className={config.className}>
+        {config.label}
+      </Badge>
+    )
   }
 
   const calculateWorkDuration = (checkIn: Date, checkOut?: Date | null) => {
@@ -108,6 +150,9 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
     const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60))
     return `${hours} jam ${minutes} menit`
   }
+
+  const formatTime = (date: Date) => format(date, "HH:mm:ss", { locale: id })
+  const formatDate = (date: Date) => format(date, "EEEE, dd MMMM yyyy", { locale: id })
 
   if (loading) {
     return (
@@ -120,6 +165,10 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
     )
   }
 
+  // Filter data presensi hari ini saja
+  const filteredPresensi = presensi.filter(
+    (p) => new Date(p.check_in).toDateString() === new Date().toDateString(),
+  )
   return (
     <div className="space-y-6">
       {/* Current Time & Session Info */}
@@ -284,6 +333,164 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
               <AlertDescription className="text-green-800">{success}</AlertDescription>
             </Alert>
           )}
+        </CardContent>
+      </Card>
+
+ {/* Mark Attendance Form */}
+ <Card>
+        <CardHeader className="flex items-center justify-between">
+          <div>
+            <CardTitle>Tandai Absensi Petugas</CardTitle>
+            <CardDescription>
+              Tandai kehadiran semua Petugas (cek salah satu: izin, sakit, alpha). Jika tidak diceklis berarti hadir.
+            </CardDescription>
+          </div>
+          <Button onClick={handleSaveAll} disabled={actionLoading || petugas.length === 0}>
+            {actionLoading ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-2"></div>
+                Menyimpan...
+              </>
+            ) : (
+              "Simpan Absensi"
+            )}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Petugas</TableHead>
+                  <TableHead>Alamat</TableHead>
+                  <TableHead className="text-center w-24">Izin</TableHead>
+                  <TableHead className="text-center w-24">Sakit</TableHead>
+                  <TableHead className="text-center w-24">Alpha</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {petugas.map((w) => {
+                  const current = selectedStatuses[w.id] || "hadir"
+                  return (
+                    <TableRow key={w.id}>
+                      <TableCell className="font-medium">{w.namaLengkap}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{w.alamat}</TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            checked={current === "izin"}
+                            onCheckedChange={(c) => handleCheckboxChange(w.id, "izin", Boolean(c))}
+                            aria-label={`Tandai ${w.namaLengkap} izin`}
+                            className="h-5 w-5 rounded-md border-2 border-foreground/40 transition-colors
+                                     hover:border-foreground/60
+                                     data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground
+                                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ring-offset-background"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            checked={current === "sakit"}
+                            onCheckedChange={(c) => handleCheckboxChange(w.id, "sakit", Boolean(c))}
+                            aria-label={`Tandai ${w.namaLengkap} sakit`}
+                            className="h-5 w-5 rounded-md border-2 border-foreground/40 transition-colors
+                                     hover:border-foreground/60
+                                     data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground
+                                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ring-offset-background"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            checked={current === "alpha"}
+                            onCheckedChange={(c) => handleCheckboxChange(w.id, "alpha", Boolean(c))}
+                            aria-label={`Tandai ${w.namaLengkap} alpha`}
+                            className="h-5 w-5 rounded-md border-2 border-foreground/40 transition-colors
+                                     hover:border-foreground/60
+                                     data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground
+                                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ring-offset-background"
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+            {petugas.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Tidak ada petugas aktif.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Error/Success Messages */}
+          {error && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          {success && (
+            <Alert className="border-green-200 bg-green-50 mt-4">
+              <UserCheck className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">{success}</AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
+  {/* Attendance Table */}
+  <Card>
+        <CardHeader>
+          <CardTitle>Daftar Absensi</CardTitle>
+          <CardDescription>
+            Menampilkan {filteredPresensi.length} dari {presensi.length} record absensi
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Petugas</TableHead>
+                  <TableHead>Check-in</TableHead>
+                  <TableHead>Check-out</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Durasi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {petugas.map((w) => {
+                  const attendance = presensi.find((p) => p.id_user === w.id)
+                  return (
+                    <TableRow key={w.id}>
+                      <TableCell className="font-medium">{w.namaLengkap}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {attendance?.check_in ? format(attendance.check_in, "HH:mm:ss", { locale: id }) : "-"}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {attendance?.check_out ? format(attendance.check_out, "HH:mm:ss", { locale: id }) : "-"}
+                      </TableCell>$
+                      <TableCell>{getStatusBadge(attendance?.status || "hadir")}</TableCell>
+                      <TableCell className="text-sm">
+                        {attendance?.check_out
+                          ? `${Math.floor((attendance.check_out.getTime() - attendance.check_in.getTime()) / (1000 * 60 * 60))} jam`
+                          : "Sedang bertugas"}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+
+            {filteredPresensi.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Tidak ada data absensi yang ditemukan</p>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

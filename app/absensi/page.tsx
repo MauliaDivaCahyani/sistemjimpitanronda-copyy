@@ -34,7 +34,7 @@ export default function AbsensiPage() {
     <DashboardLayout title="Absensi">
       <Tabs defaultValue="tracker" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="tracker">Absensi Saya</TabsTrigger>
+          <TabsTrigger value="tracker">Absensi</TabsTrigger>
           <TabsTrigger value="management">Kelola Absensi</TabsTrigger>
         </TabsList>
 

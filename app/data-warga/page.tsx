@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { Plus, Search, Eye, Edit, Trash2, Phone, MapPin } from "lucide-react"
 import {
   AlertDialog,
@@ -208,6 +209,12 @@ export default function DataWargaPage() {
                           <p className="text-sm text-muted-foreground">{w.jenisKelamin}</p>
                         </div>
                       </div>
+                      <Badge
+                        variant={w.statusAktif === "Aktif" ? "default" : "secondary"}
+                        className={w.statusAktif === "Aktif" ? "bg-green-500" : "bg-gray-500"}
+                      >
+                        {w.statusAktif}
+                      </Badge>
                     </div>
 
                     <div className="space-y-2 mb-4">
@@ -293,6 +300,12 @@ export default function DataWargaPage() {
                     <p className="text-muted-foreground">{selectedWarga.jenisKelamin}</p>
                   </div>
                 </div>
+                <Badge
+                  variant={selectedWarga.statusAktif === "Aktif" ? "default" : "secondary"}
+                  className={selectedWarga.statusAktif === "Aktif" ? "bg-green-500" : "bg-gray-500"}
+                >
+                  {selectedWarga.statusAktif}
+                </Badge>
               </div>
 
               <div className="space-y-4">
@@ -321,6 +334,11 @@ export default function DataWargaPage() {
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Jenis Kelamin:</span>
                     <span className="font-medium">{selectedWarga.jenisKelamin}</span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Status:</span>
+                    <span className="font-medium">{selectedWarga.statusAktif}</span>
                   </div>
                 </div>
               </div>
