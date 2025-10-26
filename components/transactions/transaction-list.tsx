@@ -85,13 +85,21 @@ export function TransactionList() {
     }
   }
 
-  const getWargaName = (id_warga: string) => {
-    const w = warga.find((w) => w.id === id_warga)
+  const getWargaName = (transaksi: any) => {
+    // Prioritas: gunakan nama dari backend JOIN, fallback ke mapping manual
+    if (transaksi.namaWarga) {
+      return transaksi.namaWarga
+    }
+    const w = warga.find((w) => w.id == transaksi.id_warga)
     return w ? w.namaLengkap : "Unknown"
   }
 
-  const getJenisDanaName = (id_jenis: string) => {
-    const jd = jenisDana.find((jd) => jd.id === id_jenis)
+  const getJenisDanaName = (transaksi: any) => {
+    // Prioritas: gunakan nama dari backend JOIN, fallback ke mapping manual
+    if (transaksi.jenisDana) {
+      return transaksi.jenisDana
+    }
+    const jd = jenisDana.find((jd) => jd.id == transaksi.id_jenis_dana || jd.id == transaksi.id_jenis)
     return jd ? jd.namaDana : "Unknown"
   }
 
@@ -104,8 +112,8 @@ export function TransactionList() {
   }
 
   const filteredTransaksi = transaksi.filter((t) => {
-    const wargaName = getWargaName(t.id_warga).toLowerCase()
-    const jenisDanaName = getJenisDanaName(t.id_jenis).toLowerCase()
+    const wargaName = getWargaName(t).toLowerCase()
+    const jenisDanaName = getJenisDanaName(t).toLowerCase()
     const searchLower = searchTerm.toLowerCase()
 
     return wargaName.includes(searchLower) || jenisDanaName.includes(searchLower)
@@ -307,9 +315,9 @@ export function TransactionList() {
               <TableBody>
                 {filteredTransaksi.map((t) => (
                   <TableRow key={t.id}>
-                    <TableCell>{format(t.tanggal_selor, "dd MMM yyyy", { locale: id })}</TableCell>
-                    <TableCell className="font-medium">{getWargaName(t.id_warga)}</TableCell>
-                    <TableCell>{getJenisDanaName(t.id_jenis)}</TableCell>
+                    <TableCell>{format(new Date(t.tanggal_selor), "dd MMM yyyy", { locale: id })}</TableCell>
+                    <TableCell className="font-medium">{getWargaName(t)}</TableCell>
+                    <TableCell>{getJenisDanaName(t)}</TableCell>
                     <TableCell className="font-mono">{formatCurrency(t.nominal)}</TableCell>
                     <TableCell>
                       <Badge
@@ -320,7 +328,7 @@ export function TransactionList() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {format(t.waktu_input, "dd MMM yyyy HH:mm", { locale: id })}
+                      {format(new Date(t.waktu_input), "dd MMM yyyy HH:mm", { locale: id })}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end"></div>

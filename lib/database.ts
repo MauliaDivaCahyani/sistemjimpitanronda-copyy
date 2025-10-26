@@ -1,4 +1,4 @@
-import type { Rumah, Warga, User, JenisDana, KelompokRonda, Transaksi, Presensi } from "@/types/database"
+import type { Rumah, Warga, User, JenisDana, KelompokRonda, Transaksi, Presensi, Petugas } from "@/types/database"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5006/api"
 
@@ -93,8 +93,20 @@ export async function getWargaByBarcode(barcode: string): Promise<Warga | null> 
 }
 
 /* ==================== PETUGAS ==================== */
-export async function getAllPetugas(): Promise<User[]> {
-  return apiRequest<User[]>("petugas")
+export async function getAllPetugas(): Promise<Petugas[]> {
+  const data = await apiRequest<any[]>("petugas")
+  return data.map((item) => ({
+    id: item.id || item.id_petugas,
+    namaLengkap: item.namaWarga || item.nama_lengkap || "",
+    nik: item.nik || "",
+    namaKelompok: item.namaKelompok || "",
+    jabatan: item.jabatan || "",
+    role: item.role || "petugas",
+    status: item.status || "Tidak Aktif",
+    username: item.username || "",
+    createdAt: new Date(item.created_at || new Date()),
+    updatedAt: new Date(item.updated_at || new Date()),
+  }))
 }
 
 export async function createPetugas(data: any) {

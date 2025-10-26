@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -14,8 +16,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { getAllRumah, getAllWarga, getAllJenisDana } from "@/lib/database"
-import type { Rumah, Warga, JenisDana } from "@/types/database"
+import { QrCode, User, Coins, Search } from "lucide-react"
+import { getAllWarga, getAllJenisDana } from "@/lib/database"
+import type { Warga, JenisDana } from "@/types/database"
 import { toast } from "@/hooks/use-toast"
 
 interface ManualTransactionFormProps {
@@ -24,202 +27,465 @@ interface ManualTransactionFormProps {
   onSubmit: (data: any) => void
 }
 
+interface PetugasLogin {
+  id: string
+  name: string
+  username: string
+  role: string
+  loginTime: string
+}
+
 export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTransactionFormProps) {
-  const [rumahList, setRumahList] = useState<Rumah[]>([])
   const [wargaList, setWargaList] = useState<Warga[]>([])
   const [jenisDanaList, setJenisDanaList] = useState<JenisDana[]>([])
-  const [selectedRumah, setSelectedRumah] = useState<string>("")
-  const [selectedWarga, setSelectedWarga] = useState<string>("")
+  const [filteredWarga, setFilteredWarga] = useState<Warga[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [petugas, setPetugas] = useState<PetugasLogin | null>(null)
+  const [step, setStep] = useState<"login" | "pilih-jenis" | "input-manual" | "scan-barcode">("login")
+  const [selectedJenis, setSelectedJenis] = useState<JenisDana | null>(null)
+  const [loginData, setLoginData] = useState({ username: "", password: "" })
   const [formData, setFormData] = useState({
+    selectedWarga: "",
     nominal: "",
-    jenisDana: "",
+    customNominal: "",
     tanggal: new Date().toISOString().split("T")[0],
   })
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [rumahData, wargaData, jenisDanaData] = await Promise.all([
-          getAllRumah(),
-          getAllWarga(),
-          getAllJenisDana(),
-        ])
-        setRumahList(Array.isArray(rumahData) ? rumahData : [])
-        setWargaList(Array.isArray(wargaData) ? wargaData : [])
-        setJenisDanaList(Array.isArray(jenisDanaData) ? jenisDanaData : [])
-      } catch (error) {
-        console.error("Gagal memuat data:", error)
-        toast({
-          title: "Error",
-          description: "Gagal memuat data rumah dan warga",
-          variant: "destructive",
-        })
-      }
-    }
+  // Nominal dalam kelipatan Rp 5.000
+  const nominalOptions = [
+    { value: "5000", label: "Rp 5.000" },
+    { value: "10000", label: "Rp 10.000" },
+    { value: "15000", label: "Rp 15.000" },
+    { value: "20000", label: "Rp 20.000" },
+    { value: "25000", label: "Rp 25.000" },
+    { value: "30000", label: "Rp 30.000" },
+    { value: "50000", label: "Rp 50.000" },
+    { value: "custom", label: "Nominal Lain..." }
+  ]
 
+  useEffect(() => {
     if (isOpen) {
-      fetchData()
+      // Cek apakah sudah ada petugas yang login
+      const petugasData = localStorage.getItem("petugasLogin")
+      if (petugasData) {
+        setPetugas(JSON.parse(petugasData))
+        setStep("pilih-jenis")
+        fetchData()
+      } else {
+        setStep("login")
+      }
+    } else {
+      // Reset state saat dialog ditutup
+      setStep("login")
+      setSelectedJenis(null)
+      setFormData({
+        selectedWarga: "",
+        nominal: "",
+        customNominal: "",
+        tanggal: new Date().toISOString().split("T")[0],
+      })
     }
   }, [isOpen])
 
-  const handleRumahChange = (rumahId: string) => {
-    setSelectedRumah(rumahId)
-    // Filter warga berdasarkan rumah yang dipilih
-    const wargaInRumah = wargaList.filter((w) => w.idRumah === rumahId)
-    if (wargaInRumah.length > 0) {
-      setSelectedWarga(wargaInRumah[0].id)
+  useEffect(() => {
+    // Filter warga berdasarkan pencarian
+    if (searchTerm.trim() === "") {
+      setFilteredWarga(wargaList)
     } else {
-      setSelectedWarga("")
+      const filtered = wargaList.filter(warga =>
+        warga.namaLengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        warga.nik.includes(searchTerm)
+      )
+      setFilteredWarga(filtered)
     }
+  }, [searchTerm, wargaList])
+
+  const fetchData = async () => {
+    try {
+      const [wargaData, jenisDanaData] = await Promise.all([
+        getAllWarga(),
+        getAllJenisDana(),
+      ])
+      const activeWarga = wargaData.filter((w: Warga) => w.statusAktif === "Aktif")
+      const activeJenis = jenisDanaData.filter((j: JenisDana) => j.isActive)
+      
+      setWargaList(activeWarga)
+      setFilteredWarga(activeWarga)
+      setJenisDanaList(activeJenis)
+    } catch (error) {
+      console.error("Gagal memuat data:", error)
+      toast({
+        title: "Error",
+        description: "Gagal memuat data",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Simulasi login sederhana
+    const validUsers = [
+      { username: "petugas1", password: "123456", name: "Ahmad Petugas", id: "1" },
+      { username: "petugas2", password: "123456", name: "Siti Petugas", id: "2" },
+      { username: "admin", password: "admin123", name: "Admin Sistem", id: "3" }
+    ]
+
+    const user = validUsers.find(u => 
+      u.username === loginData.username && u.password === loginData.password
+    )
+
+    if (user) {
+      const petugasData = {
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        role: "petugas",
+        loginTime: new Date().toISOString()
+      }
+      
+      localStorage.setItem("petugasLogin", JSON.stringify(petugasData))
+      setPetugas(petugasData)
+      setStep("pilih-jenis")
+      fetchData()
+      
+      toast({
+        title: "Login Berhasil",
+        description: `Selamat datang, ${user.name}`,
+      })
+    } else {
+      toast({
+        title: "Login Gagal",
+        description: "Username atau password salah",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleSelectJenis = (jenis: JenisDana) => {
+    setSelectedJenis(jenis)
+    setStep("input-manual")
+  }
+
+  const handleScanBarcode = () => {
+    setStep("scan-barcode")
+  }
+
+  const handleNominalChange = (value: string) => {
+    if (value === "custom") {
+      setFormData({ ...formData, nominal: "custom", customNominal: "" })
+    } else {
+      setFormData({ ...formData, nominal: value, customNominal: "" })
+    }
+  }
+
+  const handleCustomNominalChange = (value: string) => {
+    const numValue = parseInt(value)
+    if (isNaN(numValue) || numValue < 0) {
+      setFormData({ ...formData, customNominal: "" })
+      return
+    }
+    
+    if (numValue % 5000 !== 0) {
+      toast({
+        title: "Nominal Tidak Valid",
+        description: "Nominal harus kelipatan Rp 5.000",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    setFormData({ ...formData, customNominal: value })
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!selectedWarga) {
+    if (!formData.selectedWarga || (!formData.nominal || formData.nominal === "custom" && !formData.customNominal)) {
       toast({
-        title: "Error",
-        description: "Silakan pilih warga terlebih dahulu",
+        title: "Form Tidak Lengkap",
+        description: "Semua field wajib diisi",
         variant: "destructive",
       })
       return
     }
 
-    if (!formData.jenisDana) {
+    const nominal = formData.nominal === "custom" ? parseInt(formData.customNominal) : parseInt(formData.nominal)
+    
+    if (nominal < 5000 || nominal % 5000 !== 0) {
       toast({
-        title: "Error",
-        description: "Silakan pilih jenis dana",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (!formData.nominal || Number.parseFloat(formData.nominal) <= 0) {
-      toast({
-        title: "Error",
-        description: "Nominal harus lebih dari 0",
+        title: "Nominal Tidak Valid",
+        description: "Nominal harus minimal Rp 5.000 dan kelipatan Rp 5.000",
         variant: "destructive",
       })
       return
     }
 
     onSubmit({
-      id_warga: selectedWarga,
-      id_jenis: formData.jenisDana,
-      nominal: Number.parseFloat(formData.nominal),
-      tanggal_selor: new Date(formData.tanggal),
+      id_warga: formData.selectedWarga,
+      id_jenis_dana: selectedJenis!.id,
+      id_user: petugas!.id,
+      nominal: nominal,
+      tanggal_selor: formData.tanggal,
       status_jimpitan: "lunas",
     })
 
     // Reset form
-    setSelectedRumah("")
-    setSelectedWarga("")
+    setStep("login")
+    setSelectedJenis(null)
     setFormData({
+      selectedWarga: "",
       nominal: "",
-      jenisDana: "",
+      customNominal: "",
       tanggal: new Date().toISOString().split("T")[0],
     })
     onClose()
   }
 
-  const wargaInSelectedRumah = selectedRumah ? wargaList.filter((w) => w.idRumah === selectedRumah) : []
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(amount)
+  }
+
+  const getSelectedWargaName = () => {
+    const warga = wargaList.find(w => w.id === formData.selectedWarga)
+    return warga ? warga.namaLengkap : ""
+  }
+
+  const renderContent = () => {
+    switch (step) {
+      case "login":
+        return (
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="text-center mb-4">
+              <User className="h-12 w-12 mx-auto text-emerald-600 mb-2" />
+              <p className="text-sm text-gray-600">Login sebagai petugas untuk melakukan transaksi</p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                value={loginData.username}
+                onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
+                placeholder="Masukkan username"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={loginData.password}
+                onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                placeholder="Masukkan password"
+                required
+              />
+            </div>
+            
+            <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+              Demo: username: <code>petugas1</code>, password: <code>123456</code>
+            </div>
+            
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose}>Batal</Button>
+              <Button type="submit">Login</Button>
+            </DialogFooter>
+          </form>
+        )
+
+      case "pilih-jenis":
+        return (
+          <div className="space-y-4">
+            <div className="text-center mb-4">
+              <Coins className="h-12 w-12 mx-auto text-emerald-600 mb-2" />
+              <p className="text-sm text-gray-600">Pilih jenis dana untuk transaksi</p>
+              <p className="text-xs text-gray-500 mt-1">Petugas: {petugas?.name}</p>
+            </div>
+            
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {jenisDanaList.map((jenis) => (
+                <div
+                  key={jenis.id}
+                  className="p-3 border rounded-lg cursor-pointer hover:border-emerald-300 hover:bg-emerald-50 transition-all"
+                  onClick={() => handleSelectJenis(jenis)}
+                >
+                  <h3 className="font-medium">{jenis.namaDana}</h3>
+                  <p className="text-sm text-gray-600">{jenis.deskripsi}</p>
+                </div>
+              ))}
+            </div>
+            
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleScanBarcode} className="flex-1">
+                <QrCode className="h-4 w-4 mr-2" />
+                Scan Barcode
+              </Button>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setStep("login")}>Kembali</Button>
+            </DialogFooter>
+          </div>
+        )
+
+      case "scan-barcode":
+        return (
+          <div className="space-y-4 text-center">
+            <QrCode className="h-16 w-16 mx-auto text-gray-400" />
+            <h3 className="text-lg font-medium">Scan Barcode Rumah</h3>
+            <p className="text-sm text-gray-600">
+              Fitur scan barcode sedang dalam pengembangan.<br/>
+              Silakan gunakan input manual untuk sementara.
+            </p>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setStep("pilih-jenis")}>Kembali</Button>
+              <Button onClick={() => setStep("input-manual")}>Input Manual</Button>
+            </DialogFooter>
+          </div>
+        )
+
+      case "input-manual":
+        return (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Coins className="h-5 w-5 text-emerald-600" />
+                <span className="font-medium">Jenis Dana:</span>
+                <Badge>{selectedJenis?.namaDana}</Badge>
+              </div>
+              <p className="text-xs text-gray-500">Petugas: {petugas?.name}</p>
+            </div>
+
+            {/* Search dan Pilih Warga */}
+            <div className="space-y-2">
+              <Label htmlFor="search">Cari dan Pilih Warga</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Cari nama warga atau NIK..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              <Select value={formData.selectedWarga} onValueChange={(value) => setFormData({ ...formData, selectedWarga: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih warga" />
+                </SelectTrigger>
+                <SelectContent className="max-h-48">
+                  {filteredWarga.map((warga) => (
+                    <SelectItem key={warga.id} value={warga.id}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{warga.namaLengkap}</span>
+                        <span className="text-xs text-gray-500">NIK: {warga.nik}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Nominal */}
+            <div className="space-y-2">
+              <Label htmlFor="nominal">Nominal (Kelipatan Rp 5.000)</Label>
+              <Select value={formData.nominal} onValueChange={handleNominalChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih nominal" />
+                </SelectTrigger>
+                <SelectContent>
+                  {nominalOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {formData.nominal === "custom" && (
+                <Input
+                  type="number"
+                  placeholder="Masukkan nominal (kelipatan Rp 5.000)"
+                  value={formData.customNominal}
+                  onChange={(e) => handleCustomNominalChange(e.target.value)}
+                  step="5000"
+                  min="5000"
+                />
+              )}
+            </div>
+
+            {/* Tanggal */}
+            <div className="space-y-2">
+              <Label htmlFor="tanggal">Tanggal Setor</Label>
+              <Input
+                type="date"
+                value={formData.tanggal}
+                onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
+                required
+              />
+            </div>
+
+            {/* Summary */}
+            {formData.selectedWarga && (formData.nominal && formData.nominal !== "custom" || formData.customNominal) && (
+              <Card className="bg-emerald-50 border-emerald-200">
+                <CardContent className="pt-4">
+                  <h3 className="font-medium mb-2">Ringkasan Transaksi:</h3>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="font-medium">Warga:</span> {getSelectedWargaName()}</p>
+                    <p><span className="font-medium">Jenis Dana:</span> {selectedJenis?.namaDana}</p>
+                    <p><span className="font-medium">Nominal:</span> {formatCurrency(
+                      formData.nominal === "custom" ? parseInt(formData.customNominal) : parseInt(formData.nominal)
+                    )}</p>
+                    <p><span className="font-medium">Tanggal:</span> {new Date(formData.tanggal).toLocaleDateString('id-ID')}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setStep("pilih-jenis")}>Kembali</Button>
+              <Button type="submit">Simpan Transaksi</Button>
+            </DialogFooter>
+          </form>
+        )
+
+      default:
+        return null
+    }
+  }
+
+  const getDialogTitle = () => {
+    switch (step) {
+      case "login": return "Login Petugas"
+      case "pilih-jenis": return "Pilih Jenis Dana"
+      case "scan-barcode": return "Scan Barcode"
+      case "input-manual": return "Input Manual Transaksi"
+      default: return "Transaksi Dana"
+    }
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[90vw] max-w-lg sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Input Transaksi Manual</DialogTitle>
-          <DialogDescription>Tambahkan transaksi dana secara manual</DialogDescription>
+          <DialogTitle>{getDialogTitle()}</DialogTitle>
+          <DialogDescription>
+            {step === "login" && "Masuk sebagai petugas untuk melakukan transaksi"}
+            {step === "pilih-jenis" && "Pilih jenis dana untuk transaksi"}
+            {step === "scan-barcode" && "Scan barcode rumah untuk input otomatis"}
+            {step === "input-manual" && "Isi data transaksi secara manual"}
+          </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Pilihan Rumah */}
-          <div className="space-y-2">
-            <Label htmlFor="rumah">Rumah</Label>
-            <Select value={selectedRumah} onValueChange={handleRumahChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih rumah" />
-              </SelectTrigger>
-              <SelectContent>
-                {rumahList.map((rumah) => (
-                  <SelectItem key={rumah.id} value={rumah.id}>
-                    {rumah.alamat} (RT {rumah.rt}/RW {rumah.rw})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Pilihan Warga */}
-          <div className="space-y-2">
-            <Label htmlFor="warga">Warga</Label>
-            <Select value={selectedWarga} onValueChange={setSelectedWarga}>
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih warga" />
-              </SelectTrigger>
-              <SelectContent>
-                {wargaInSelectedRumah.map((warga) => (
-                  <SelectItem key={warga.id} value={warga.id}>
-                    {warga.namaLengkap}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Jenis Dana */}
-          <div className="space-y-2">
-            <Label htmlFor="jenisDana">Jenis Dana</Label>
-            <Select
-              value={formData.jenisDana}
-              onValueChange={(value) => setFormData({ ...formData, jenisDana: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih jenis dana" />
-              </SelectTrigger>
-              <SelectContent>
-                {jenisDanaList.map((jenis) => (
-                  <SelectItem key={jenis.id} value={jenis.id}>
-                    {jenis.namaDana}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Nominal */}
-          <div className="space-y-2">
-            <Label htmlFor="nominal">Nominal (Rp)</Label>
-            <Input
-              id="nominal"
-              type="number"
-              value={formData.nominal}
-              onChange={(e) => setFormData({ ...formData, nominal: e.target.value })}
-              placeholder="Masukkan nominal"
-              min="0"
-              required
-            />
-          </div>
-
-          {/* Tanggal */}
-          <div className="space-y-2">
-            <Label htmlFor="tanggal">Tanggal Transaksi</Label>
-            <Input
-              id="tanggal"
-              type="date"
-              value={formData.tanggal}
-              onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
-              required
-            />
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Batal
-            </Button>
-            <Button type="submit">Simpan Transaksi</Button>
-          </DialogFooter>
-        </form>
+        {renderContent()}
       </DialogContent>
     </Dialog>
   )

@@ -1,75 +1,41 @@
 import type { Transaksi } from "@/types/database"
 
-// Mock transaction data
-const mockTransaksi: Transaksi[] = [
-  {
-    id: "1",
-    id_warga: "1",
-    id_jenis: "1",
-    id_user: "2",
-    tanggal_selor: new Date("2024-01-15"),
-    waktu_input: new Date("2024-01-15T19:30:00"),
-    nominal: 1000,
-    status_jimpitan: "lunas",
-    createdAt: new Date("2024-01-15T19:30:00"),
-    updatedAt: new Date("2024-01-15T19:30:00"),
-  },
-  {
-    id: "2",
-    id_warga: "2",
-    id_jenis: "1",
-    id_user: "2",
-    tanggal_selor: new Date("2024-01-15"),
-    waktu_input: new Date("2024-01-15T19:35:00"),
-    nominal: 1000,
-    status_jimpitan: "lunas",
-    createdAt: new Date("2024-01-15T19:35:00"),
-    updatedAt: new Date("2024-01-15T19:35:00"),
-  },
-  {
-    id: "3",
-    id_warga: "3",
-    id_jenis: "2",
-    id_user: "5",
-    tanggal_selor: new Date("2024-01-15"),
-    waktu_input: new Date("2024-01-15T20:00:00"),
-    nominal: 5000,
-    status_jimpitan: "lunas",
-    createdAt: new Date("2024-01-15T20:00:00"),
-    updatedAt: new Date("2024-01-15T20:00:00"),
-  },
-  {
-    id: "4",
-    id_warga: "1",
-    id_jenis: "3",
-    id_user: "2",
-    tanggal_selor: new Date("2024-01-16"),
-    waktu_input: new Date("2024-01-16T19:15:00"),
-    nominal: 10000,
-    status_jimpitan: "lunas",
-    createdAt: new Date("2024-01-16T19:15:00"),
-    updatedAt: new Date("2024-01-16T19:15:00"),
-  },
-  {
-    id: "5",
-    id_warga: "4",
-    id_jenis: "1",
-    id_user: "2",
-    tanggal_selor: new Date("2024-01-16"),
-    waktu_input: new Date("2024-01-16T19:45:00"),
-    nominal: 1000,
-    status_jimpitan: "lunas",
-    createdAt: new Date("2024-01-16T19:45:00"),
-    updatedAt: new Date("2024-01-16T19:45:00"),
-  },
-]
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5006/api"
+
+// Helper function untuk API request
+async function apiRequest<T = any>(endpoint: string, options?: RequestInit): Promise<T> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/${endpoint}`, {
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      ...options,
+    })
+
+    if (!res.ok) {
+      const errorText = await res.text()
+      throw new Error(`API error ${res.status}: ${errorText}`)
+    }
+
+    const payload = await res.json().catch(() => null)
+
+    if (payload && typeof payload === "object" && Object.prototype.hasOwnProperty.call(payload, "data")) {
+      return payload.data as T
+    }
+
+    return payload as T
+  } catch (error) {
+    console.error(`Failed to fetch ${API_BASE_URL}/${endpoint}:`, error)
+    throw new Error(`Network error: ${error instanceof Error ? error.message : "Unknown error"}`)
+  }
+}
 
 export interface TransactionFilter {
   startDate?: Date
   endDate?: Date
   id_warga?: string
   id_jenis?: string
-  status_jimpitan?: "lunas" | "belum_lunas" | "all"   // ✅ tambahin "all"
+  id_jenis_dana?: string
+  status_jimpitan?: "lunas" | "belum_lunas" | "all"
 }
 
 export interface TransactionSummary {
@@ -81,108 +47,147 @@ export interface TransactionSummary {
 }
 
 // Get transactions with filters
-export const getTransaksi = async (filter?: TransactionFilter): Promise<Transaksi[]> => {
-  await new Promise((resolve) => setTimeout(resolve, 500))
+export const getTransaksi = async (filter?: TransactionFilter): Promise<any[]> => {
+  try {
+    const data = await apiRequest<any[]>("transaksi")
+    
+    let filteredTransaksi = Array.isArray(data) ? data : []
 
-  let filteredTransaksi = [...mockTransaksi]
+    if (filter) {
+      if (filter.startDate) {
+        filteredTransaksi = filteredTransaksi.filter((t) => new Date(t.tanggal_selor) >= filter.startDate!)
+      }
+      if (filter.endDate) {
+        filteredTransaksi = filteredTransaksi.filter((t) => new Date(t.tanggal_selor) <= filter.endDate!)
+      }
+      if (filter.id_warga) {
+        filteredTransaksi = filteredTransaksi.filter((t) => t.id_warga == filter.id_warga)
+      }
+      if (filter.id_jenis_dana) {
+        filteredTransaksi = filteredTransaksi.filter((t) => t.id_jenis_dana == filter.id_jenis_dana)
+      }
+      if (filter.id_jenis) {
+        filteredTransaksi = filteredTransaksi.filter((t) => t.id_jenis_dana == filter.id_jenis)
+      }
+      if (filter.status_jimpitan && filter.status_jimpitan !== "all") {
+        filteredTransaksi = filteredTransaksi.filter(
+          (t) => t.status_jimpitan === filter.status_jimpitan
+        )
+      }
+    }
 
-  if (filter) {
-    if (filter.startDate) {
-      filteredTransaksi = filteredTransaksi.filter((t) => t.tanggal_selor >= filter.startDate!)
-    }
-    if (filter.endDate) {
-      filteredTransaksi = filteredTransaksi.filter((t) => t.tanggal_selor <= filter.endDate!)
-    }
-    if (filter.id_warga) {
-      filteredTransaksi = filteredTransaksi.filter((t) => t.id_warga === filter.id_warga)
-    }
-    if (filter.id_jenis) {
-      filteredTransaksi = filteredTransaksi.filter((t) => t.id_jenis === filter.id_jenis)
-    }
-    if (filter.status_jimpitan && filter.status_jimpitan !== "all") {   // ✅ handle "all"
-      filteredTransaksi = filteredTransaksi.filter(
-        (t) => t.status_jimpitan === filter.status_jimpitan
-      )
-    }
+    return filteredTransaksi.sort((a, b) => new Date(b.waktu_input).getTime() - new Date(a.waktu_input).getTime())
+  } catch (error) {
+    console.error("Error fetching transaksi:", error)
+    return []
   }
-
-  return filteredTransaksi.sort((a, b) => b.waktu_input.getTime() - a.waktu_input.getTime())
 }
 
 // Get transaction summary
 export const getTransactionSummary = async (filter?: TransactionFilter): Promise<TransactionSummary> => {
-  await new Promise((resolve) => setTimeout(resolve, 300))
+  try {
+    const transaksi = await getTransaksi(filter)
+    const today = new Date()
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
 
-  const transaksi = await getTransaksi(filter)
-  const today = new Date()
-  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    const totalTransaksi = transaksi.length
+    const totalNominal = transaksi.reduce((sum, t) => sum + (parseInt(t.nominal) || 0), 0)
 
-  const totalTransaksi = transaksi.length
-  const totalNominal = transaksi.reduce((sum, t) => sum + t.nominal, 0)
+    const transaksiHariIni = transaksi.filter((t) => {
+      const tanggalSelor = new Date(t.tanggal_selor)
+      return tanggalSelor.toDateString() === today.toDateString()
+    })
+    const totalHariIni = transaksiHariIni.reduce((sum, t) => sum + (parseInt(t.nominal) || 0), 0)
 
-  const transaksiHariIni = transaksi.filter((t) => t.tanggal_selor.toDateString() === today.toDateString())
-  const totalHariIni = transaksiHariIni.reduce((sum, t) => sum + t.nominal, 0)
+    const transaksiBulanIni = transaksi.filter((t) => {
+      const tanggalSelor = new Date(t.tanggal_selor)
+      return tanggalSelor >= startOfMonth
+    })
+    const totalBulanIni = transaksiBulanIni.reduce((sum, t) => sum + (parseInt(t.nominal) || 0), 0)
 
-  const transaksiBulanIni = transaksi.filter((t) => t.tanggal_selor >= startOfMonth)
-  const totalBulanIni = transaksiBulanIni.reduce((sum, t) => sum + t.nominal, 0)
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+    const rataRataHarian = totalBulanIni / daysInMonth
 
-  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
-  const rataRataHarian = totalBulanIni / daysInMonth
-
-  return {
-    totalTransaksi,
-    totalNominal,
-    totalHariIni,
-    totalBulanIni,
-    rataRataHarian,
+    return {
+      totalTransaksi,
+      totalNominal,
+      totalHariIni,
+      totalBulanIni,
+      rataRataHarian,
+    }
+  } catch (error) {
+    console.error("Error getting transaction summary:", error)
+    return {
+      totalTransaksi: 0,
+      totalNominal: 0,
+      totalHariIni: 0,
+      totalBulanIni: 0,
+      rataRataHarian: 0,
+    }
   }
 }
 
 // Create new transaction
-export const createTransaksi = async (data: Omit<Transaksi, "id" | "createdAt" | "updatedAt">): Promise<Transaksi> => {
-  await new Promise((resolve) => setTimeout(resolve, 1000))
-
-  const newTransaksi: Transaksi = {
-    ...data,
-    id: (mockTransaksi.length + 1).toString(),
-    createdAt: new Date(),
-    updatedAt: new Date(),
+export const createTransaksi = async (data: any): Promise<any> => {
+  try {
+    // Transform data to match API expectations and database schema
+    const apiData = {
+      id_warga: data.id_warga,
+      id_jenis_dana: data.id_jenis_dana || data.id_jenis, // Backend expects id_jenis_dana
+      id_user: data.id_user,
+      tanggal_selor: data.tanggal_selor,
+      nominal: data.nominal,
+      status_jimpitan: data.status_jimpitan || "lunas"
+    }
+    
+    return await apiRequest("transaksi", {
+      method: "POST",
+      body: JSON.stringify(apiData),
+    })
+  } catch (error) {
+    console.error("Error creating transaksi:", error)
+    throw error
   }
-
-  mockTransaksi.push(newTransaksi)
-  return newTransaksi
 }
 
 // Update transaction
-export const updateTransaksi = async (id: string, data: Partial<Transaksi>): Promise<Transaksi | null> => {
-  await new Promise((resolve) => setTimeout(resolve, 500))
-
-  const index = mockTransaksi.findIndex((t) => t.id === id)
-  if (index === -1) return null
-
-  mockTransaksi[index] = { ...mockTransaksi[index], ...data, updatedAt: new Date() }
-  return mockTransaksi[index]
+export const updateTransaksi = async (id: string, data: any): Promise<any> => {
+  try {
+    return await apiRequest(`transaksi/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
+  } catch (error) {
+    console.error("Error updating transaksi:", error)
+    throw error
+  }
 }
 
 // Delete transaction
 export const deleteTransaksi = async (id: string): Promise<boolean> => {
-  await new Promise((resolve) => setTimeout(resolve, 500))
-
-  const index = mockTransaksi.findIndex((t) => t.id === id)
-  if (index === -1) return false
-
-  mockTransaksi.splice(index, 1)
-  return true
+  try {
+    await apiRequest(`transaksi/${id}`, {
+      method: "DELETE",
+    })
+    return true
+  } catch (error) {
+    console.error("Error deleting transaksi:", error)
+    return false
+  }
 }
 
-// Get transactions by warga (for warga dashboard)
-export const getTransaksiByWarga = async (id_warga: string): Promise<Transaksi[]> => {
-  const filter: TransactionFilter = { id_warga }
-  return getTransaksi(filter)
+// Get transactions by warga
+export const getTransaksiByWarga = async (id_warga: string): Promise<any[]> => {
+  try {
+    return await apiRequest<any[]>(`transaksi/warga/${id_warga}`)
+  } catch (error) {
+    console.error("Error fetching transaksi by warga:", error)
+    return []
+  }
 }
 
 // Get recent transactions (last 30 days)
-export const getRecentTransaksi = async (): Promise<Transaksi[]> => {
+export const getRecentTransaksi = async (): Promise<any[]> => {
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 

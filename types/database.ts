@@ -65,7 +65,6 @@ export interface JenisDana {
   updatedAt: Date
 }
 
-
 export interface Transaksi {
   id: string
   id_warga: string
@@ -104,4 +103,15 @@ export interface Laporan {
   updatedAt: Date
 }
 
-export type Petugas = User
+export interface Petugas {
+  id: string
+  namaLengkap: string
+  nik: string
+  namaKelompok?: string
+  jabatan?: string
+  role: string
+  status: string
+  username: string
+  createdAt: Date
+  updatedAt: Date
+}

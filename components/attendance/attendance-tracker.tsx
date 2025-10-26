@@ -35,7 +35,6 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
   const [success, setSuccess] = useState("")
   const [currentTime, setCurrentTime] = useState(new Date())
 
-  // tambahan dari attendance-management
   const [petugas, setPetugas] = useState<Petugas[]>([])
   const [presensi, setPresensi] = useState<Presensi[]>([])
   const [selectedStatuses, setSelectedStatuses] = useState<Record<string, "hadir" | "izin" | "sakit" | "alpha">>({})
@@ -53,7 +52,7 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
 
         setTodayAttendance(attendance)
         setCurrentSession(session)
-        setPetugas(PetugasData.filter((w) => w.statusUser))
+        setPetugas(PetugasData.filter((p) => p.status === "Aktif"))
         setPresensi(presensiData)
 
         const statusMap: Record<string, "hadir" | "izin" | "sakit" | "alpha"> = {}
@@ -133,10 +132,10 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
     setSuccess("")
     try {
       await Promise.all(
-        petugas.map((w) => {
-          const status = selectedStatuses[w.id] || "hadir"
-          const checkInTime = checkInTimes[w.id]
-          return markAttendance(w.id, status, user.id, checkInTime)
+        petugas.map((p) => {
+          const status = selectedStatuses[p.id] || "hadir"
+          const checkInTime = checkInTimes[p.id]
+          return markAttendance(p.id, status, user.id, checkInTime)
         }),
       )
       setSuccess("Absensi berhasil disimpan untuk semua petugas aktif")
@@ -261,7 +260,8 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Petugas</TableHead>
-                  <TableHead>Alamat</TableHead>
+                  <TableHead>Jabatan</TableHead>
+                  <TableHead>Kelompok</TableHead>
                   <TableHead className="text-center w-24">Hadir</TableHead>
                   <TableHead className="text-center w-24">Izin</TableHead>
                   <TableHead className="text-center w-24">Sakit</TableHead>
@@ -269,18 +269,19 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {petugas.map((w) => {
-                  const current = selectedStatuses[w.id] || "hadir"
+                {petugas.map((p) => {
+                  const current = selectedStatuses[p.id] || "hadir"
                   return (
-                    <TableRow key={w.id}>
-                      <TableCell className="font-medium">{w.namaLengkap}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{w.alamat}</TableCell>
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">{p.namaLengkap}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{p.jabatan || "-"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{p.namaKelompok || "-"}</TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center">
                           <Checkbox
                             checked={current === "hadir"}
-                            onCheckedChange={(c) => handleCheckboxChange(w.id, "hadir", Boolean(c))}
-                            aria-label={`Tandai ${w.namaLengkap} hadir`}
+                            onCheckedChange={(c) => handleCheckboxChange(p.id, "hadir", Boolean(c))}
+                            aria-label={`Tandai ${p.namaLengkap} hadir`}
                             className="h-5 w-5 rounded-md border-2 border-foreground/40 transition-colors
                                      hover:border-foreground/60
                                      data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground
@@ -292,8 +293,8 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                         <div className="flex items-center justify-center">
                           <Checkbox
                             checked={current === "izin"}
-                            onCheckedChange={(c) => handleCheckboxChange(w.id, "izin", Boolean(c))}
-                            aria-label={`Tandai ${w.namaLengkap} izin`}
+                            onCheckedChange={(c) => handleCheckboxChange(p.id, "izin", Boolean(c))}
+                            aria-label={`Tandai ${p.namaLengkap} izin`}
                             className="h-5 w-5 rounded-md border-2 border-foreground/40 transition-colors
                                      hover:border-foreground/60
                                      data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground
@@ -305,8 +306,8 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                         <div className="flex items-center justify-center">
                           <Checkbox
                             checked={current === "sakit"}
-                            onCheckedChange={(c) => handleCheckboxChange(w.id, "sakit", Boolean(c))}
-                            aria-label={`Tandai ${w.namaLengkap} sakit`}
+                            onCheckedChange={(c) => handleCheckboxChange(p.id, "sakit", Boolean(c))}
+                            aria-label={`Tandai ${p.namaLengkap} sakit`}
                             className="h-5 w-5 rounded-md border-2 border-foreground/40 transition-colors
                                      hover:border-foreground/60
                                      data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground
@@ -318,8 +319,8 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                         <div className="flex items-center justify-center">
                           <Checkbox
                             checked={current === "alpha"}
-                            onCheckedChange={(c) => handleCheckboxChange(w.id, "alpha", Boolean(c))}
-                            aria-label={`Tandai ${w.namaLengkap} alpha`}
+                            onCheckedChange={(c) => handleCheckboxChange(p.id, "alpha", Boolean(c))}
+                            aria-label={`Tandai ${p.namaLengkap} alpha`}
                             className="h-5 w-5 rounded-md border-2 border-foreground/40 transition-colors
                                      hover:border-foreground/60
                                      data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground
@@ -373,13 +374,13 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {petugas.map((w) => {
-                  const attendance = presensi.find((p) => p.id_user === w.id)
-                  const displayStatus = selectedStatuses[w.id] || attendance?.status || "hadir"
-                  const checkInTime = checkInTimes[w.id] || attendance?.check_in
+                {petugas.map((p) => {
+                  const attendance = presensi.find((pr) => pr.id_user === p.id)
+                  const displayStatus = selectedStatuses[p.id] || attendance?.status || "hadir"
+                  const checkInTime = checkInTimes[p.id] || attendance?.check_in
                   return (
-                    <TableRow key={w.id}>
-                      <TableCell className="font-medium">{w.namaLengkap}</TableCell>
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">{p.namaLengkap}</TableCell>
                       <TableCell className="font-mono text-sm">
                         {checkInTime ? format(checkInTime, "HH:mm:ss", { locale: id }) : "-"}
                       </TableCell>
