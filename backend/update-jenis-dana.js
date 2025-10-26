@@ -1,4 +1,4 @@
-const { pool } = require('./config/database.js');
+import { pool } from './config/database.js';
 
 async function updateJenisDanaTable() {
   try {
