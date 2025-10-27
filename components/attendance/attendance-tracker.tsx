@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Clock, UserCheck } from "lucide-react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
+import { KelompokRondaInfo } from "@/components/ronda/kelompok-ronda-info"
 import {
   getTodayAttendance,
   checkInAttendance,

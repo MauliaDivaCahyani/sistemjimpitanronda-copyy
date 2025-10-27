@@ -13,6 +13,7 @@ import jenisDanaRoutes from "./routes/jenisDanaRoutes.js"
 import transaksiRoutes from "./routes/transaksiRoutes.js"
 import presensiRoutes from "./routes/presensiRoutes.js"
 import laporanRoutes from "./routes/laporanRoutes.js"
+import wargaRondaRoutes from "./routes/wargaRondaRoutes.js"
 
 dotenv.config()
 
@@ -38,6 +39,7 @@ app.use("/api/jenis-dana", jenisDanaRoutes)
 app.use("/api/transaksi", transaksiRoutes)
 app.use("/api/presensi", presensiRoutes)
 app.use("/api/laporan", laporanRoutes)
+app.use("/api/warga-ronda", wargaRondaRoutes)
 
 // ✅ Default API root info
 app.get("/api", (req, res) => {
@@ -53,6 +55,7 @@ app.get("/api", (req, res) => {
       "/api/transaksi",
       "/api/presensi",
       "/api/laporan",
+      "/api/warga-ronda",
       "/api/health",
     ],
   })

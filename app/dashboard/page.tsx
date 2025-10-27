@@ -1,12 +1,13 @@
 "use client"
 import { useEffect, useState } from "react"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
+import { WargaDashboard } from "@/components/dashboard/warga-dashboard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Users, Building2, Wallet, TrendingUp, Clock, QrCode, Receipt } from "lucide-react"
 import { getAllKelompokRonda } from "@/lib/database"
-import type { User } from "@/types/auth"
+import type { User } from "@/types/database"
 
 interface DashboardStats {
   totalWarga: number
@@ -105,99 +106,6 @@ export default function DashboardPage() {
       isOverpay: overpay > 0,
       isPaid: percentRaw >= 100,
     }
-  }
-
-  const renderWargaDashboard = () => {
-    // Example values; replace with real data when available
-    const monthlyTarget = 30000
-    const paidThisMonth = 50000
-
-    const payment = getPaymentStatus(paidThisMonth, monthlyTarget)
-    const percentText = payment.isOverpay ? "100%+" : `${payment.percentRaw}%`
-
-    return (
-      <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {/* Dana Hari Ini */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Dana Hari Ini</CardTitle>
-              <Wallet className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(5000)}</div>
-              <p className="text-xs text-muted-foreground">Jimpitan harian</p>
-            </CardContent>
-          </Card>
-
-          {/* Dana Bulan Ini */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Dana Bulan Ini</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(150000)}</div>
-              <p className="text-xs text-muted-foreground">Total kontribusi</p>
-            </CardContent>
-          </Card>
-
-          {/* Status Pembayaran */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Status Pembayaran</CardTitle>
-              <Badge variant="default" className="bg-green-500">
-                {payment.isPaid ? "Lunas" : "Belum Lunas"}
-              </Badge>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{percentText}</div>
-              <p className="text-xs text-muted-foreground">
-                {payment.isOverpay ? `Lebih bayar ${formatCurrency(payment.overpay)} • Bulan ini` : "Bulan ini"}
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Riwayat Transaksi */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Riwayat Transaksi</CardTitle>
-              <Receipt className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">15</div>
-              <p className="text-xs text-muted-foreground">Transaksi bulan ini</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Riwayat Pembayaran Terakhir */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Riwayat Pembayaran Terakhir</CardTitle>
-            <CardDescription>5 transaksi terakhir Anda</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center justify-between border-b pb-2">
-                  <div>
-                    <p className="font-medium">Jimpitan Harian</p>
-                    <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString("id-ID")}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">{formatCurrency(1000)}</p>
-                    <Badge variant="default" className="bg-green-500">
-                      Lunas
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
   }
 
   const renderPetugasDashboard = () => (
@@ -378,7 +286,7 @@ export default function DashboardPage() {
 
     switch (user.role) {
       case "warga":
-        return renderWargaDashboard()
+        return <WargaDashboard user={user} />
       case "petugas":
         return renderPetugasDashboard()
       case "admin":
@@ -390,7 +298,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <DashboardLayout title="Dashboard" subtitle={`${getGreeting()}, ${user?.nama || "User"}`}>
+    <DashboardLayout title="Dashboard" subtitle={`${getGreeting()}, ${user?.namaLengkap || user?.username || "User"}`}>
       {renderDashboardContent()}
     </DashboardLayout>
   )
