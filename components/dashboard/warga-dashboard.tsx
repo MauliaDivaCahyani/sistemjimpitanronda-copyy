@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { TrendingUp, TrendingDown, DollarSign, Users, Calendar, Home } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TrendingUp, TrendingDown, DollarSign, Users, Calendar, Home, Target, History, UserCheck } from "lucide-react"
 import { KelompokRondaInfo } from "@/components/ronda/kelompok-ronda-info"
 import type { User } from "@/types/database"
 
@@ -113,7 +114,7 @@ export function WargaDashboard({ user }: WargaDashboardProps) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Target Bulan Ini</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.persentaseTarget}%</div>
@@ -125,13 +126,17 @@ export function WargaDashboard({ user }: WargaDashboardProps) {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Rumah</CardTitle>
-            <Home className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Status Bayar</CardTitle>
+            <UserCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalRumah}</div>
+            <div className="text-2xl font-bold">
+              <Badge variant="default" className="bg-green-500 text-white">
+                LUNAS
+              </Badge>
+            </div>
             <p className="text-xs text-muted-foreground">
-              {stats.rumahAktif} rumah aktif
+              Oktober 2025
             </p>
           </CardContent>
         </Card>
@@ -150,94 +155,135 @@ export function WargaDashboard({ user }: WargaDashboardProps) {
         </Card>
       </div>
 
-      {/* Progress Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Progress Target Bulanan</CardTitle>
-          <CardDescription>
-            Target jimpitan bulan ini: {formatRupiah(stats.targetBulanIni)}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span>Terkumpul: {formatRupiah(stats.totalJimpitan)}</span>
-              <span>{stats.persentaseTarget}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div 
-                className="bg-primary h-2.5 rounded-full transition-all duration-300" 
-                style={{ width: `${Math.min(stats.persentaseTarget, 100)}%` }}
-              ></div>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Sisa: {formatRupiah(stats.targetBulanIni - stats.totalJimpitan)}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Tab Content */}
+      <Tabs defaultValue="progress" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="progress">Progress & Target</TabsTrigger>
+          <TabsTrigger value="history">Riwayat Transaksi</TabsTrigger>
+          <TabsTrigger value="ronda">Kelompok Ronda</TabsTrigger>
+        </TabsList>
 
-      {/* Status Pembayaran */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Status Pembayaran</CardTitle>
-          <CardDescription>
-            Status pembayaran jimpitan bulan ini
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center p-8">
-            <div className="text-center">
-              <Badge variant="default" className="bg-green-500 text-white mb-4 text-lg px-4 py-2">
-                LUNAS
-              </Badge>
-              <p className="text-sm text-muted-foreground">
-                Pembayaran jimpitan bulan Oktober 2025 telah lunas
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Dibayar pada: 15 Oktober 2025
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Kelompok Ronda Info */}
-      <KelompokRondaInfo />
-
-      {/* Riwayat Transaksi Terakhir */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Riwayat Transaksi Terakhir</CardTitle>
-          <CardDescription>
-            5 transaksi terakhir
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[
-              { tanggal: "2025-10-27", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
-              { tanggal: "2025-10-26", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
-              { tanggal: "2025-10-25", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
-              { tanggal: "2025-10-24", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
-              { tanggal: "2025-10-23", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
-            ].map((transaksi, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <div className="font-medium">{transaksi.jenis}</div>
-                  <div className="text-sm text-muted-foreground">{transaksi.tanggal}</div>
+        <TabsContent value="progress" className="space-y-4">
+          {/* Progress Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Progress Target Bulanan</CardTitle>
+              <CardDescription>
+                Target jimpitan bulan ini: {formatRupiah(stats.targetBulanIni)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Terkumpul: {formatRupiah(stats.totalJimpitan)}</span>
+                  <span>{stats.persentaseTarget}%</span>
                 </div>
-                <div className="text-right">
-                  <div className="font-medium">{formatRupiah(transaksi.jumlah)}</div>
-                  <Badge variant={transaksi.status === "Berhasil" ? "default" : "destructive"} className="text-xs">
-                    {transaksi.status}
-                  </Badge>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div 
+                    className="bg-primary h-2.5 rounded-full transition-all duration-300" 
+                    style={{ width: `${Math.min(stats.persentaseTarget, 100)}%` }}
+                  ></div>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Sisa: {formatRupiah(stats.targetBulanIni - stats.totalJimpitan)}
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+
+          {/* Detail Status Pembayaran */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Detail Status Pembayaran</CardTitle>
+              <CardDescription>
+                Informasi lengkap pembayaran jimpitan
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Status:</span>
+                    <Badge variant="default" className="bg-green-500">LUNAS</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Bulan:</span>
+                    <span className="text-sm">Oktober 2025</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Tanggal Bayar:</span>
+                    <span className="text-sm">15 Oktober 2025</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Jumlah:</span>
+                    <span className="text-sm font-bold">{formatRupiah(stats.totalJimpitan)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Metode:</span>
+                    <span className="text-sm">Transfer Bank</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">No. Ref:</span>
+                    <span className="text-sm text-muted-foreground">JMP202510001</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Riwayat Transaksi</CardTitle>
+              <CardDescription>
+                10 transaksi terakhir
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {[
+                  { tanggal: "2025-10-27", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
+                  { tanggal: "2025-10-26", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
+                  { tanggal: "2025-10-25", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
+                  { tanggal: "2025-10-24", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
+                  { tanggal: "2025-10-23", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
+                  { tanggal: "2025-10-22", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
+                  { tanggal: "2025-10-21", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
+                  { tanggal: "2025-10-20", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
+                  { tanggal: "2025-10-19", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
+                  { tanggal: "2025-10-18", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
+                ].map((transaksi, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <div className="font-medium">{transaksi.jenis}</div>
+                      <div className="text-sm text-muted-foreground">{transaksi.tanggal}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">{formatRupiah(transaksi.jumlah)}</div>
+                      <Badge variant={transaksi.status === "Berhasil" ? "default" : "destructive"} className="text-xs">
+                        {transaksi.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 text-center">
+                <Button variant="outline" className="w-full">
+                  <History className="h-4 w-4 mr-2" />
+                  Lihat Semua Riwayat
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ronda" className="space-y-4">
+          <KelompokRondaInfo />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

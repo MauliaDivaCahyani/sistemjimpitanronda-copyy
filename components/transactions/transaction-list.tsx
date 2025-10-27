@@ -10,14 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Filter, Download, Search, Lock, Plus } from "lucide-react"
+import { CalendarIcon, Filter, Download, Search, Plus, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import { getTransaksi, getTransactionSummary, createTransaksi } from "@/lib/transactions"
+import { getTransaksi, getTransactionSummary, createTransaksi, deleteTransaksi } from "@/lib/transactions"
 import { getWarga, getJenisDana } from "@/lib/database"
 import type { Transaksi, Warga, JenisDana } from "@/types/database"
 import type { TransactionFilter, TransactionSummary } from "@/lib/transactions"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ManualTransactionForm } from "./manual-transaction-form"
 import { toast } from "@/hooks/use-toast"
 
@@ -62,6 +61,34 @@ export function TransactionList() {
   const clearFilters = () => {
     setFilter({ status_jimpitan: "all" })
     setSearchTerm("")
+  }
+
+  const handleDeleteTransaction = async (transaksiId: number) => {
+    if (!confirm("Apakah Anda yakin ingin menghapus transaksi ini? Data yang dihapus tidak dapat dikembalikan.")) {
+      return
+    }
+
+    try {
+      const success = await deleteTransaksi(transaksiId.toString())
+      if (success) {
+        toast({
+          title: "Berhasil",
+          description: "Transaksi berhasil dihapus",
+        })
+        // Refresh data
+        const [transaksiData, summaryData] = await Promise.all([getTransaksi(filter), getTransactionSummary(filter)])
+        setTransaksi(transaksiData)
+        setSummary(summaryData)
+      } else {
+        throw new Error("Gagal menghapus transaksi")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal menghapus transaksi",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleManualTransactionSubmit = async (data: any) => {
@@ -132,13 +159,6 @@ export function TransactionList() {
 
   return (
     <div className="space-y-6">
-      <Alert className="border-blue-200 bg-blue-50">
-        <Lock className="h-4 w-4 text-blue-600" />
-        <AlertDescription className="text-blue-800">
-          Daftar transaksi bersifat read-only. Data transaksi tidak dapat diedit atau dihapus setelah disimpan.
-        </AlertDescription>
-      </Alert>
-
       {/* Summary Cards */}
       {summary && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -197,12 +217,12 @@ export function TransactionList() {
             </div>
             <Button onClick={() => setIsManualFormOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="h-4 w-4 mr-2" />
-              Input Manual
+              Transaksi
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {/* Search */}
             <div className="space-y-2">
               <Label>Cari Warga/Jenis Dana</Label>
@@ -257,26 +277,6 @@ export function TransactionList() {
                 </PopoverContent>
               </Popover>
             </div>
-
-            {/* Status Filter */}
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                value={filter.status_jimpitan || "all"}
-                onValueChange={(value) =>
-                  handleFilterChange({ status_jimpitan: value as "lunas" | "belum_lunas" | "all" })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Semua status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua status</SelectItem>
-                  <SelectItem value="lunas">Lunas</SelectItem>
-                  <SelectItem value="belum_lunas">Belum Lunas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           <div className="flex gap-2 mt-4">
@@ -310,6 +310,7 @@ export function TransactionList() {
                   <TableHead>Nominal</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Waktu Input</TableHead>
+                  <TableHead className="text-center">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -330,8 +331,15 @@ export function TransactionList() {
                     <TableCell className="text-sm text-muted-foreground">
                       {format(new Date(t.waktu_input), "dd MMM yyyy HH:mm", { locale: id })}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-2 justify-end"></div>
+                    <TableCell className="text-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteTransaction(t.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
