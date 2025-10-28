@@ -21,12 +21,32 @@ const app = express()
 const PORT = process.env.PORT || 5006
 
 // ✅ Middleware
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    credentials: true,
-  })
-)
+// Middleware untuk logging semua request
+app.use((req, res, next) => {
+  console.log(`[v0] ${new Date().toISOString()} - ${req.method} ${req.url}`);
+  console.log(`[v0] Request headers:`, req.headers);
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log(`[v0] Request body:`, req.body);
+  }
+  
+  // Log response
+  const originalSend = res.send;
+  res.send = function(data) {
+    console.log(`[v0] Response status: ${res.statusCode}`);
+    console.log(`[v0] Response data:`, data);
+    originalSend.call(this, data);
+  };
+  
+  next();
+});
+
+// CORS configuration
+app.use(cors({
+  origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 

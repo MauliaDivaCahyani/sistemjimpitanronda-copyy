@@ -93,8 +93,11 @@ export default function DataWargaPage() {
 
   const handleFormSubmit = async (data: Omit<Warga, "id" | "createdAt" | "updatedAt">) => {
     try {
+      console.log("[v0] Data yang akan dikirim:", data)
+      
       if (formMode === "create") {
         const response = await wargaApi.create(data)
+        console.log("[v0] Response dari create:", response)
         if (response.success) {
           toast({
             title: "Berhasil",
@@ -103,6 +106,7 @@ export default function DataWargaPage() {
         }
       } else if (selectedWarga) {
         const response = await wargaApi.update(selectedWarga.id, data)
+        console.log("[v0] Response dari update:", response)
         if (response.success) {
           toast({
             title: "Berhasil",
@@ -113,9 +117,11 @@ export default function DataWargaPage() {
       await fetchWarga()
       setShowForm(false)
     } catch (error) {
+      console.error("[v0] Error di handleFormSubmit:", error)
+      const errorMessage = error instanceof Error ? error.message : "Gagal menyimpan data warga"
       toast({
         title: "Error",
-        description: "Gagal menyimpan data warga",
+        description: errorMessage,
         variant: "destructive",
       })
     }

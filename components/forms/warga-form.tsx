@@ -68,6 +68,19 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
+    console.log("[v0] Form data sebelum submit:", formData)
+    
+    // Validasi manual
+    if (!formData.namaLengkap) {
+      alert("Nama lengkap wajib diisi")
+      return
+    }
+    
+    if (!formData.jenisKelamin) {
+      alert("Jenis kelamin wajib dipilih")
+      return
+    }
+
     onSubmit(formData as any)
     onClose()
   }
@@ -99,7 +112,9 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
 
           {/* Nama Lengkap */}
           <div className="space-y-2">
-            <Label htmlFor="nama">Nama Lengkap (Contoh: Budi Santoso)</Label>
+            <Label htmlFor="nama">
+              Nama Lengkap <span className="text-red-500">*</span> (Contoh: Budi Santoso)
+            </Label>
             <Input
               id="nama"
               value={formData.namaLengkap}
@@ -136,10 +151,13 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
 
           {/* Jenis Kelamin */}
           <div className="space-y-2">
-            <Label htmlFor="jenisKelamin">Jenis Kelamin</Label>
+            <Label htmlFor="jenisKelamin">
+              Jenis Kelamin <span className="text-red-500">*</span>
+            </Label>
             <Select
               value={formData.jenisKelamin}
               onValueChange={(value) => setFormData({ ...formData, jenisKelamin: value })}
+              required
             >
               <SelectTrigger>
                 <SelectValue placeholder="Pilih jenis kelamin" />

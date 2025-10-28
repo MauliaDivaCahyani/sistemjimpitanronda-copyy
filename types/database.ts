@@ -84,6 +84,7 @@ export interface Transaksi {
 export interface Presensi {
   id: string
   id_user: string
+  id_warga?: string // Tambahan untuk kompatibilitas dengan backend
   check_in: Date
   check_out?: Date | null
   tanggal: Date
@@ -105,6 +106,7 @@ export interface Laporan {
 
 export interface Petugas {
   id: string
+  id_warga?: string // Tambahkan id_warga untuk keperluan presensi
   namaLengkap: string
   nik: string
   namaKelompok?: string

@@ -10,7 +10,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Clock, UserCheck } from "lucide-react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import { KelompokRondaInfo } from "@/components/ronda/kelompok-ronda-info"
 import {
   getTodayAttendance,
   checkInAttendance,
@@ -44,24 +43,56 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const today = new Date()
+        const tomorrow = new Date(today)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        
         const [attendance, session, PetugasData, presensiData] = await Promise.all([
           getTodayAttendance(user.id),
           getCurrentSession(),
           getAllPetugas(),
-          getPresensi({ startDate: new Date(), endDate: new Date() }),
+          getPresensi({ startDate: today, endDate: tomorrow }),
         ])
 
         setTodayAttendance(attendance)
         setCurrentSession(session)
         setPetugas(PetugasData.filter((p) => p.status === "Aktif"))
         setPresensi(presensiData)
+        
+        // Debug logging
+        console.log('Loaded petugas:', PetugasData.filter((p) => p.status === "Aktif").map(p => ({ id: p.id, nama: p.namaLengkap, id_warga: p.id_warga })))
+        console.log('Loaded presensi:', presensiData.map(p => ({ id: p.id, id_warga: p.id_warga, status: p.status, tanggal: p.tanggal })))
 
         const statusMap: Record<string, "hadir" | "izin" | "sakit" | "alpha"> = {}
         const checkInMap: Record<string, Date> = {}
-        presensiData.forEach((p) => {
-          statusMap[p.id_user] = p.status
-          if (p.check_in) {
-            checkInMap[p.id_user] = new Date(p.check_in)
+        
+        // Map status berdasarkan id_warga dari petugas
+        PetugasData.filter((p) => p.status === "Aktif").forEach((petugas) => {
+          const attendance = presensiData.find((pr) => pr.id_warga === petugas.id_warga)
+          if (attendance) {
+            // Konversi status dari backend ke frontend format
+            let frontendStatus: "hadir" | "izin" | "sakit" | "alpha" = "alpha"
+            switch (attendance.status as string) {
+              case "Hadir":
+                frontendStatus = "hadir"
+                break
+              case "Izin":
+                frontendStatus = "izin"
+                break
+              case "Sakit":
+                frontendStatus = "sakit"
+                break
+              case "Tidak Hadir":
+                frontendStatus = "alpha"
+                break
+              default:
+                frontendStatus = "alpha"
+            }
+            
+            statusMap[petugas.id] = frontendStatus
+            if (attendance.check_in) {
+              checkInMap[petugas.id] = new Date(attendance.check_in)
+            }
           }
         })
         setSelectedStatuses(statusMap)
@@ -132,16 +163,38 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
     setError("")
     setSuccess("")
     try {
+      // Filter petugas yang memiliki id_warga valid
+      const validPetugas = petugas.filter(p => p.id_warga)
+      
+      if (validPetugas.length === 0) {
+        setError("Tidak ada petugas dengan data warga yang valid untuk diabsen")
+        return
+      }
+      
       await Promise.all(
-        petugas.map((p) => {
+        validPetugas.map((p) => {
           const status = selectedStatuses[p.id] || "hadir"
           const checkInTime = checkInTimes[p.id]
-          return markAttendance(p.id, status, user.id, checkInTime)
+          console.log(`Saving attendance for ${p.namaLengkap}: status=${status}, id_warga=${p.id_warga}`)
+          // Gunakan id_warga dari petugas untuk presensi
+          return markAttendance(p.id_warga!, status, user.id, checkInTime)
         }),
       )
-      setSuccess("Absensi berhasil disimpan untuk semua petugas aktif")
-      const newPresensi = await getPresensi({ startDate: new Date(), endDate: new Date() })
+      setSuccess(`Absensi berhasil disimpan untuk ${validPetugas.length} petugas aktif`)
+      
+      // Tunggu sebentar untuk memastikan data tersimpan di database
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Refresh data presensi dengan range yang lebih luas untuk memastikan data terbaru muncul
+      const today = new Date()
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      const newPresensi = await getPresensi({ startDate: today, endDate: tomorrow })
       setPresensi(newPresensi)
+      
+      console.log('Refreshed presensi data:', newPresensi.map(p => ({ id_warga: p.id_warga, status: p.status })))
+      
+      // Sekarang baru hapus selectedStatuses setelah data ter-refresh
       setSelectedStatuses({})
       setCheckInTimes({})
     } catch (err) {
@@ -152,13 +205,18 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
   }
 
   const getStatusBadge = (status: string) => {
+    // Normalize status untuk menangani variasi dari backend
+    const normalizedStatus = status.toLowerCase()
+    
     const statusConfig = {
       hadir: { variant: "default" as const, className: "bg-green-500", label: "Hadir" },
       izin: { variant: "secondary" as const, className: "bg-blue-500", label: "Izin" },
       sakit: { variant: "secondary" as const, className: "bg-yellow-500", label: "Sakit" },
       alpha: { variant: "destructive" as const, className: "bg-red-500", label: "Alpha" },
+      "tidak hadir": { variant: "destructive" as const, className: "bg-red-500", label: "Tidak Hadir" },
     }
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.alpha
+    
+    const config = statusConfig[normalizedStatus as keyof typeof statusConfig] || statusConfig.hadir
     return (
       <Badge variant={config.variant} className={config.className}>
         {config.label}
@@ -188,8 +246,14 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
     )
   }
 
-  // Filter data presensi hari ini saja
-  const filteredPresensi = presensi.filter((p) => new Date(p.check_in).toDateString() === new Date().toDateString())
+  // Filter data presensi hari ini saja berdasarkan tanggal
+  const today = new Date()
+  const todayStr = today.toISOString().split('T')[0] // YYYY-MM-DD format
+  const filteredPresensi = presensi.filter((p) => {
+    if (!p.tanggal) return false
+    const presensiDate = new Date(p.tanggal).toISOString().split('T')[0]
+    return presensiDate === todayStr
+  })
 
   return (
     <div className="space-y-6">
@@ -242,9 +306,21 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
         <CardHeader className="flex items-center justify-between">
           <div>
             <CardTitle>Tandai Absensi Petugas</CardTitle>
-            <CardDescription>Tandai kehadiran semua Petugas. Jika tidak diceklis berarti hadir.</CardDescription>
+            <CardDescription>
+              Tandai kehadiran semua Petugas. Jika tidak diceklis berarti hadir.
+              {petugas.length > 0 && (
+                <div className="mt-1">
+                  <span className="text-xs">
+                    {petugas.filter(p => p.id_warga).length} dari {petugas.length} petugas dapat diabsen
+                    {petugas.filter(p => !p.id_warga).length > 0 && (
+                      <span className="text-yellow-600"> • {petugas.filter(p => !p.id_warga).length} petugas memiliki data tidak lengkap</span>
+                    )}
+                  </span>
+                </div>
+              )}
+            </CardDescription>
           </div>
-          <Button onClick={handleSaveAll} disabled={actionLoading || petugas.length === 0}>
+          <Button onClick={handleSaveAll} disabled={actionLoading || petugas.filter(p => p.id_warga).length === 0}>
             {actionLoading ? (
               <>
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-2"></div>
@@ -272,21 +348,31 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
               <TableBody>
                 {petugas.map((p) => {
                   const current = selectedStatuses[p.id] || "hadir"
+                  const hasValidWarga = !!p.id_warga
                   return (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.namaLengkap}</TableCell>
+                    <TableRow key={p.id} className={!hasValidWarga ? "opacity-50 bg-muted/30" : ""}>
+                      <TableCell className="font-medium">
+                        {p.namaLengkap}
+                        {!hasValidWarga && (
+                          <Badge variant="secondary" className="ml-2 text-xs">
+                            Data Tidak Lengkap
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{p.jabatan || "-"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{p.namaKelompok || "-"}</TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center">
                           <Checkbox
                             checked={current === "hadir"}
+                            disabled={!hasValidWarga}
                             onCheckedChange={(c) => handleCheckboxChange(p.id, "hadir", Boolean(c))}
                             aria-label={`Tandai ${p.namaLengkap} hadir`}
                             className="h-5 w-5 rounded-md border-2 border-foreground/40 transition-colors
                                      hover:border-foreground/60
                                      data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground
-                                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ring-offset-background"
+                                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ring-offset-background
+                                     disabled:opacity-50 disabled:cursor-not-allowed"
                           />
                         </div>
                       </TableCell>
@@ -294,12 +380,14 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                         <div className="flex items-center justify-center">
                           <Checkbox
                             checked={current === "izin"}
+                            disabled={!hasValidWarga}
                             onCheckedChange={(c) => handleCheckboxChange(p.id, "izin", Boolean(c))}
                             aria-label={`Tandai ${p.namaLengkap} izin`}
                             className="h-5 w-5 rounded-md border-2 border-foreground/40 transition-colors
                                      hover:border-foreground/60
                                      data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground
-                                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ring-offset-background"
+                                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ring-offset-background
+                                     disabled:opacity-50 disabled:cursor-not-allowed"
                           />
                         </div>
                       </TableCell>
@@ -307,12 +395,14 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                         <div className="flex items-center justify-center">
                           <Checkbox
                             checked={current === "sakit"}
+                            disabled={!hasValidWarga}
                             onCheckedChange={(c) => handleCheckboxChange(p.id, "sakit", Boolean(c))}
                             aria-label={`Tandai ${p.namaLengkap} sakit`}
                             className="h-5 w-5 rounded-md border-2 border-foreground/40 transition-colors
                                      hover:border-foreground/60
                                      data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground
-                                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ring-offset-background"
+                                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ring-offset-background
+                                     disabled:opacity-50 disabled:cursor-not-allowed"
                           />
                         </div>
                       </TableCell>
@@ -320,12 +410,14 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                         <div className="flex items-center justify-center">
                           <Checkbox
                             checked={current === "alpha"}
+                            disabled={!hasValidWarga}
                             onCheckedChange={(c) => handleCheckboxChange(p.id, "alpha", Boolean(c))}
                             aria-label={`Tandai ${p.namaLengkap} alpha`}
                             className="h-5 w-5 rounded-md border-2 border-foreground/40 transition-colors
                                      hover:border-foreground/60
                                      data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground
-                                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ring-offset-background"
+                                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ring-offset-background
+                                     disabled:opacity-50 disabled:cursor-not-allowed"
                           />
                         </div>
                       </TableCell>
@@ -361,7 +453,12 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
         <CardHeader>
           <CardTitle>Daftar Absensi</CardTitle>
           <CardDescription>
-            Menampilkan {filteredPresensi.length} dari {presensi.length} record absensi
+            Menampilkan {filteredPresensi.length} dari {presensi.length} record absensi hari ini
+            {presensi.length > filteredPresensi.length && (
+              <span className="text-xs block mt-1">
+                Ada {presensi.length - filteredPresensi.length} record absensi dari hari lain
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -376,9 +473,19 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
               </TableHeader>
               <TableBody>
                 {petugas.map((p) => {
-                  const attendance = presensi.find((pr) => pr.id_user === p.id)
-                  const displayStatus = selectedStatuses[p.id] || attendance?.status || "hadir"
-                  const checkInTime = checkInTimes[p.id] || attendance?.check_in
+                  // Cari data presensi berdasarkan id_warga, bukan id_petugas
+                  const attendance = presensi.find((pr) => pr.id_warga === p.id_warga)
+                  
+                  // Prioritaskan status yang dipilih user, lalu dari database
+                  const displayStatus = selectedStatuses[p.id] || "hadir"
+                  
+                  const checkInTime = checkInTimes[p.id] || (attendance?.check_in ? new Date(attendance.check_in) : null)
+                  
+                  // Debug: log untuk memahami data
+                  if (p.id_warga && !attendance) {
+                    console.log(`No attendance found for petugas ${p.namaLengkap} (id_warga: ${p.id_warga})`)
+                  }
+                  
                   return (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.namaLengkap}</TableCell>

@@ -62,9 +62,21 @@ export const createWarga = async (req, res) => {
     console.log("DEBUG CREATE WARGA - jenisKelamin value:", jenisKelamin);
     console.log("DEBUG CREATE WARGA - jenisKelamin type:", typeof jenisKelamin);
     
-    if (!namaLengkap || !jenisKelamin) {
-      console.log("DEBUG CREATE WARGA - Validation failed:", { namaLengkap, jenisKelamin });
-      return res.status(400).json({ success: false, message: "namaLengkap dan jenisKelamin wajib diisi" });
+    // Validasi yang lebih ketat
+    if (!namaLengkap || namaLengkap.trim() === "") {
+      console.log("DEBUG CREATE WARGA - namaLengkap validation failed:", namaLengkap);
+      return res.status(400).json({ 
+        success: false, 
+        message: "Nama lengkap wajib diisi dan tidak boleh kosong" 
+      });
+    }
+    
+    if (!jenisKelamin || jenisKelamin.trim() === "") {
+      console.log("DEBUG CREATE WARGA - jenisKelamin validation failed:", jenisKelamin);
+      return res.status(400).json({ 
+        success: false, 
+        message: "Jenis kelamin wajib dipilih" 
+      });
     }
     
     // Mapping jenis kelamin dari frontend ke database
@@ -75,15 +87,18 @@ export const createWarga = async (req, res) => {
     } else if (jenisKelamin === "Perempuan") {
       jenisKelaminDB = "P";
     } else {
-      // Fallback jika nilai tidak sesuai
-      jenisKelaminDB = jenisKelamin === "L" || jenisKelamin === "P" ? jenisKelamin : "L";
+      console.log("DEBUG CREATE WARGA - Invalid jenisKelamin value:", jenisKelamin);
+      return res.status(400).json({ 
+        success: false, 
+        message: "Jenis kelamin harus 'Laki-laki' atau 'Perempuan'" 
+      });
     }
     
     console.log("DEBUG CREATE WARGA - jenisKelamin mapped to DB:", jenisKelaminDB);
     
     const [result] = await pool.query(
       "INSERT INTO warga (id_rumah, nama_lengkap, nik, nomor_hp, jenis_kelamin, status_aktif) VALUES (?, ?, ?, ?, ?, ?)",
-      [idRumah || null, namaLengkap, nik || null, nomorHp || null, jenisKelaminDB, statusAktif || "Aktif"]
+      [idRumah || null, namaLengkap.trim(), nik || null, nomorHp || null, jenisKelaminDB, statusAktif || "Aktif"]
     );
     
     console.log("DEBUG CREATE WARGA - Insert result:", result);

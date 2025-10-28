@@ -281,7 +281,7 @@ export function WargaDashboard({ user }: WargaDashboardProps) {
         </TabsContent>
 
         <TabsContent value="ronda" className="space-y-4">
-          <KelompokRondaInfo />
+          <KelompokRondaInfo userRole="warga" />
         </TabsContent>
       </Tabs>
     </div>

@@ -70,6 +70,17 @@ export interface AttendanceSummary {
   persentaseKehadiran: number
 }
 
+// Helper function to map frontend status to backend status
+const mapStatusToBackend = (status: "hadir" | "izin" | "sakit" | "alpha"): string => {
+  const statusMap = {
+    hadir: "Hadir",
+    izin: "Izin", 
+    sakit: "Tidak Hadir", // Backend tidak ada enum "Sakit", map ke "Tidak Hadir"
+    alpha: "Tidak Hadir", // Backend tidak ada enum "Alpha", map ke "Tidak Hadir"
+  }
+  return statusMap[status] || "Hadir"
+}
+
 // Get attendance records with filters
 export const getPresensi = async (filter?: AttendanceFilter): Promise<Presensi[]> => {
   try {
@@ -219,8 +230,15 @@ export const markAttendance = async (
   await new Promise((resolve) => setTimeout(resolve, 500))
 
   try {
+    console.log(`markAttendance called: id_user=${id_user}, status=${status}`)
+    
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+
+    // Format tanggal untuk database (YYYY-MM-DD)
+    const tanggalStr = today.toISOString().split('T')[0]
+    
+    console.log(`Mapped status: ${status} -> ${mapStatusToBackend(status)}`)
 
     // Try to get existing attendance from backend
     const todayPresensi = await getTodayPresensi()
@@ -229,7 +247,9 @@ export const markAttendance = async (
     if (existingAttendance) {
       // Update existing attendance
       const updated = await updatePresensi(existingAttendance.id, {
-        status,
+        id_warga: id_user, // Backend mengharapkan id_warga
+        tanggal: tanggalStr, // Format tanggal yang benar
+        status: mapStatusToBackend(status), // Map status ke format backend
         check_in: checkInTime || existingAttendance.check_in,
       })
       return updated
@@ -237,14 +257,15 @@ export const markAttendance = async (
 
     // Create new attendance record
     const newAttendance = await createPresensi({
-      id_user,
+      id_warga: id_user, // Backend mengharapkan id_warga bukan id_user
       check_in: checkInTime || new Date(),
       check_out: null,
-      tanggal: today,
-      status,
+      tanggal: tanggalStr, // Kirim tanggal dalam format string YYYY-MM-DD
+      status: mapStatusToBackend(status), // Map status ke format backend
     })
 
     return newAttendance
+
   } catch (error) {
     console.error("Error saving attendance to backend:", error)
     // Fallback to mock data if API fails

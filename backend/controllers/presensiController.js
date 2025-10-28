@@ -3,14 +3,37 @@ import { pool } from "../config/database.js";
 
 export const getAllPresensi = async (req, res) => {
   try {
-    const [rows] = await pool.query(`
-      SELECT p.id_presensi AS id, w.nama_lengkap AS namaWarga, pe.username AS namaPetugas, p.tanggal, p.check_in, p.check_out,
+    let query = `
+      SELECT p.id_presensi AS id, p.id_warga, w.nama_lengkap AS namaWarga, pe.username AS namaPetugas, p.tanggal, p.check_in, p.check_out,
              p.status, p.keterangan, p.created_at, p.updated_at
       FROM presensi p
       LEFT JOIN warga w ON p.id_warga = w.id_warga
       LEFT JOIN petugas pe ON p.id_petugas = pe.id_petugas
-      ORDER BY p.tanggal DESC
-    `);
+    `;
+    
+    const queryParams = [];
+    
+    // Handle date filtering
+    if (req.query.startDate || req.query.endDate) {
+      query += " WHERE ";
+      const conditions = [];
+      
+      if (req.query.startDate) {
+        conditions.push("p.tanggal >= ?");
+        queryParams.push(new Date(req.query.startDate).toISOString().split('T')[0]);
+      }
+      
+      if (req.query.endDate) {
+        conditions.push("p.tanggal < ?");
+        queryParams.push(new Date(req.query.endDate).toISOString().split('T')[0]);
+      }
+      
+      query += conditions.join(" AND ");
+    }
+    
+    query += " ORDER BY p.tanggal DESC";
+    
+    const [rows] = await pool.query(query, queryParams);
     res.json({ success: true, data: rows });
   } catch (error) {
     res.status(500).json({ success: false, message: "Gagal mengambil data presensi", error: error.message });

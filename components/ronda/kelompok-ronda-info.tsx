@@ -47,9 +47,10 @@ interface RondaInfo {
 
 interface KelompokRondaInfoProps {
   className?: string
+  userRole?: "warga" | "petugas" | "admin" | "super_admin"
 }
 
-export function KelompokRondaInfo({ className }: KelompokRondaInfoProps) {
+export function KelompokRondaInfo({ className, userRole = "petugas" }: KelompokRondaInfoProps) {
   const [data, setData] = useState<{
     today: RondaInfo
     yesterday: RondaInfo
@@ -237,22 +238,26 @@ export function KelompokRondaInfo({ className }: KelompokRondaInfoProps) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nama</TableHead>
-                      <TableHead>Jabatan</TableHead>
+                      {userRole !== "warga" && <TableHead>Jabatan</TableHead>}
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-center">Check-in</TableHead>
+                      {userRole !== "warga" && <TableHead className="text-center">Check-in</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {group.members.map((member, index) => (
                       <TableRow key={index}>
                         <TableCell className="font-medium">{member.namaLengkap}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {member.jabatan || "-"}
-                        </TableCell>
+                        {userRole !== "warga" && (
+                          <TableCell className="text-sm text-muted-foreground">
+                            {member.jabatan || "-"}
+                          </TableCell>
+                        )}
                         <TableCell>{getStatusBadge(member.status)}</TableCell>
-                        <TableCell className="text-center font-mono text-sm">
-                          {formatTime(member.check_in)}
-                        </TableCell>
+                        {userRole !== "warga" && (
+                          <TableCell className="text-center font-mono text-sm">
+                            {formatTime(member.check_in)}
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>

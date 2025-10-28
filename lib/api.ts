@@ -17,6 +17,12 @@ class ApiClient {
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     try {
+      console.log("[v0] Making API request:", {
+        url: `${this.baseUrl}${endpoint}`,
+        method: options.method || "GET",
+        body: options.body
+      })
+
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         ...options,
         headers: {
@@ -25,15 +31,37 @@ class ApiClient {
         },
       })
 
-      const data = await response.json()
+      console.log("[v0] Response status:", response.status)
+      console.log("[v0] Response ok:", response.ok)
+
+      let data
+      try {
+        data = await response.json()
+      } catch (parseError) {
+        console.error("[v0] Error parsing JSON response:", parseError)
+        throw new Error("Invalid JSON response from server")
+      }
+
+      console.log("[v0] API response data:", data)
 
       if (!response.ok) {
-        throw new Error(data.message || "Request failed")
+        console.error("[v0] API request failed:", {
+          status: response.status,
+          statusText: response.statusText,
+          data: data
+        })
+        throw new Error(data.message || `HTTP Error ${response.status}: ${response.statusText}`)
       }
 
       return data
     } catch (error) {
       console.error("[v0] API request error:", error)
+      
+      // Check if it's a network error
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error("Tidak dapat terhubung ke server. Pastikan backend berjalan di port 5006")
+      }
+      
       throw error
     }
   }

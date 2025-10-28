@@ -97,6 +97,7 @@ export async function getAllPetugas(): Promise<Petugas[]> {
   const data = await apiRequest<any[]>("petugas")
   return data.map((item) => ({
     id: item.id || item.id_petugas,
+    id_warga: item.id_warga, // Simpan id_warga untuk keperluan presensi
     namaLengkap: item.namaWarga || item.nama_lengkap || "",
     nik: item.nik || "",
     namaKelompok: item.namaKelompok || "",
@@ -209,17 +210,35 @@ export async function getAllPresensi(): Promise<Presensi[]> {
   return apiRequest<Presensi[]>("presensi")
 }
 
-export async function createPresensi(data: Omit<Presensi, "id" | "createdAt" | "updatedAt">): Promise<Presensi | any> {
+export async function createPresensi(data: any): Promise<Presensi | any> {
+  // Convert frontend data format to backend format
+  const backendData = {
+    id_warga: data.id_warga || data.id_user, // Backend expects id_warga
+    tanggal: data.tanggal, // Should be in YYYY-MM-DD format
+    check_in: data.check_in,
+    check_out: data.check_out,
+    status: data.status,
+  }
+  
   return apiRequest<any>("presensi", {
     method: "POST",
-    body: JSON.stringify(data),
+    body: JSON.stringify(backendData),
   })
 }
 
-export async function updatePresensi(id: string, data: Partial<Presensi>): Promise<Presensi | any> {
+export async function updatePresensi(id: string, data: any): Promise<Presensi | any> {
+  // Convert frontend data format to backend format
+  const backendData = {
+    id_warga: data.id_warga || data.id_user, // Backend expects id_warga
+    tanggal: data.tanggal, // Should be in YYYY-MM-DD format
+    check_in: data.check_in,
+    check_out: data.check_out,
+    status: data.status,
+  }
+  
   return apiRequest<any>(`presensi/${id}`, {
     method: "PUT",
-    body: JSON.stringify(data),
+    body: JSON.stringify(backendData),
   })
 }
 
