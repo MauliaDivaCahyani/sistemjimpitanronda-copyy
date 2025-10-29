@@ -285,7 +285,7 @@ export function KelompokRondaInfo({ className, userRole = "petugas" }: KelompokR
             Informasi Kelompok Ronda
           </CardTitle>
           <CardDescription>
-            Status partisipasi kelompok ronda hari ini dan kemarin
+            Menampilkan kelompok ronda yang terjadwal hari ini dan kemarin sesuai jadwal masing-masing
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -301,20 +301,44 @@ export function KelompokRondaInfo({ className, userRole = "petugas" }: KelompokR
 
             <TabsContent value="today" className="space-y-4">
               {data.today.groups.length > 0 ? (
-                renderGroupTable(data.today.groups)
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-center gap-2 text-blue-800">
+                      <CalendarDays className="h-4 w-4" />
+                      <span className="text-sm font-medium">
+                        Menampilkan {data.today.groups.length} kelompok yang terjadwal ronda hari ini
+                      </span>
+                    </div>
+                  </div>
+                  {renderGroupTable(data.today.groups)}
+                </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Belum ada data kelompok ronda untuk hari ini
+                <div className="text-center py-8">
+                  <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground font-medium">Tidak ada kelompok ronda yang terjadwal hari ini</p>
+                  <p className="text-sm text-muted-foreground mt-1">Semua kelompok ronda sedang libur</p>
                 </div>
               )}
             </TabsContent>
 
             <TabsContent value="yesterday" className="space-y-4">
               {data.yesterday.groups.length > 0 ? (
-                renderGroupTable(data.yesterday.groups)
+                <div className="space-y-4">
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <CalendarDays className="h-4 w-4" />
+                      <span className="text-sm font-medium">
+                        Menampilkan {data.yesterday.groups.length} kelompok yang terjadwal ronda kemarin
+                      </span>
+                    </div>
+                  </div>
+                  {renderGroupTable(data.yesterday.groups)}
+                </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Belum ada data kelompok ronda untuk kemarin
+                <div className="text-center py-8">
+                  <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground font-medium">Tidak ada kelompok ronda yang terjadwal kemarin</p>
+                  <p className="text-sm text-muted-foreground mt-1">Semua kelompok ronda sedang libur</p>
                 </div>
               )}
             </TabsContent>

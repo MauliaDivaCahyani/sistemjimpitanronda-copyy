@@ -4,7 +4,9 @@ import { pool } from "../config/database.js"
 export const getAllPetugas = async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT p.id_petugas AS id, p.id_warga, w.nama_lengkap AS namaWarga, w.nik, kr.nama_kelompok AS namaKelompok,
+      SELECT p.id_petugas AS id, p.id_warga, p.id_kelompok_ronda AS kelompokId, 
+             w.nama_lengkap AS namaWarga, w.nik, 
+             kr.nama_kelompok AS namaKelompok, kr.jadwal_hari AS jadwalHari,
              p.jabatan, p.role, p.status, p.username, p.created_at, p.updated_at
       FROM petugas p
       LEFT JOIN warga w ON p.id_warga = w.id_warga

@@ -213,14 +213,7 @@ export default function DataPetugasPage() {
                 </div>
 
                 <div className="space-y-2 mb-4">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Avatar className="h-4 w-4 mr-2">
-                      <AvatarFallback className="bg-emerald-100 text-emerald-700">
-                        {(petugas.username?.[0] ?? "U").toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    {petugas.username ?? "N/A"}
-                  </div>
+                  {/* Tidak menampilkan username/kode petugas dan kelompok di card list */}
                 </div>
 
                 <div className="flex space-x-2">
@@ -314,7 +307,23 @@ export default function DataPetugasPage() {
 
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Kelompok Ronda:</span>
-                  <span className="font-medium">{getKelompokRondaName((selectedPetugas as any).kelompokId)}</span>
+                  <span className="font-medium">
+                    {(() => {
+                      const namaKelompok = (selectedPetugas as any).namaKelompok || "Tidak ada";
+                      const jadwalHari = (selectedPetugas as any).jadwalHari;
+                      
+                      if (!jadwalHari) return namaKelompok;
+                      
+                      // Jika jadwal hari sama dengan nama kelompok (misal: "Sabtu"), 
+                      // atau jika nama kelompok sudah mengandung jadwal hari, tampilkan nama kelompok saja
+                      if (namaKelompok.toLowerCase().includes(jadwalHari.toLowerCase()) || 
+                          jadwalHari.toLowerCase() === namaKelompok.toLowerCase()) {
+                        return namaKelompok;
+                      }
+                      
+                      return `${namaKelompok} (${jadwalHari})`;
+                    })()}
+                  </span>
                 </div>
               </div>
             </div>

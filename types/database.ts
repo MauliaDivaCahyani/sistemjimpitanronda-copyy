@@ -107,9 +107,11 @@ export interface Laporan {
 export interface Petugas {
   id: string
   id_warga?: string // Tambahkan id_warga untuk keperluan presensi
+  kelompokId?: string // Tambahkan kelompokId
   namaLengkap: string
   nik: string
   namaKelompok?: string
+  jadwalHari?: string // Tambahkan jadwalHari
   jabatan?: string
   role: string
   status: string

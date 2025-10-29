@@ -98,9 +98,11 @@ export async function getAllPetugas(): Promise<Petugas[]> {
   return data.map((item) => ({
     id: item.id || item.id_petugas,
     id_warga: item.id_warga, // Simpan id_warga untuk keperluan presensi
+    kelompokId: item.kelompokId || item.id_kelompok_ronda, // Tambahkan kelompokId
     namaLengkap: item.namaWarga || item.nama_lengkap || "",
     nik: item.nik || "",
     namaKelompok: item.namaKelompok || "",
+    jadwalHari: item.jadwalHari || "", // Tambahkan jadwalHari
     jabatan: item.jabatan || "",
     role: item.role || "petugas",
     status: item.status || "Tidak Aktif",

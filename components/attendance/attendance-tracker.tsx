@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Clock, UserCheck } from "lucide-react"
+import { Clock, UserCheck, Calendar } from "lucide-react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
 import {
@@ -20,6 +20,7 @@ import {
   type AttendanceSession,
 } from "@/lib/attendance"
 import { getAllPetugas } from "@/lib/database"
+import { getTodayDayName, isScheduledToday, formatScheduleDisplay } from "@/lib/schedule-utils"
 import type { Presensi, User, Petugas } from "@/types/database"
 
 interface AttendanceTrackerProps {
@@ -56,18 +57,38 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
 
         setTodayAttendance(attendance)
         setCurrentSession(session)
-        setPetugas(PetugasData.filter((p) => p.status === "Aktif"))
+        
+        // Filter petugas berdasarkan status aktif dan jadwal hari ini
+        const activePetugas = PetugasData.filter((p) => p.status === "Aktif")
+        const todayScheduledPetugas = activePetugas.filter((p) => {
+          // Cast p ke any untuk akses jadwalHari
+          const jadwalHari = (p as any).jadwalHari
+          return isScheduledToday(jadwalHari)
+        })
+        
+        setPetugas(todayScheduledPetugas)
         setPresensi(presensiData)
         
         // Debug logging
-        console.log('Loaded petugas:', PetugasData.filter((p) => p.status === "Aktif").map(p => ({ id: p.id, nama: p.namaLengkap, id_warga: p.id_warga })))
+        console.log('Today is:', getTodayDayName())
+        console.log('All active petugas:', activePetugas.map(p => ({ 
+          id: p.id, 
+          nama: p.namaLengkap, 
+          jadwal: (p as any).jadwalHari,
+          scheduledToday: isScheduledToday((p as any).jadwalHari)
+        })))
+        console.log('Today scheduled petugas:', todayScheduledPetugas.map(p => ({ 
+          id: p.id, 
+          nama: p.namaLengkap, 
+          jadwal: (p as any).jadwalHari 
+        })))
         console.log('Loaded presensi:', presensiData.map(p => ({ id: p.id, id_warga: p.id_warga, status: p.status, tanggal: p.tanggal })))
 
         const statusMap: Record<string, "hadir" | "izin" | "sakit" | "alpha"> = {}
         const checkInMap: Record<string, Date> = {}
         
-        // Map status berdasarkan id_warga dari petugas
-        PetugasData.filter((p) => p.status === "Aktif").forEach((petugas) => {
+        // Map status berdasarkan id_warga dari petugas yang terjadwal hari ini
+        todayScheduledPetugas.forEach((petugas) => {
           const attendance = presensiData.find((pr) => pr.id_warga === petugas.id_warga)
           if (attendance) {
             // Konversi status dari backend ke frontend format
@@ -93,6 +114,11 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
             if (attendance.check_in) {
               checkInMap[petugas.id] = new Date(attendance.check_in)
             }
+          } else {
+            // Jika belum ada data presensi, set default ke "hadir" dengan waktu saat ini
+            // Tapi jangan simpan ke database dulu, hanya untuk tampilan
+            statusMap[petugas.id] = "hadir"
+            checkInMap[petugas.id] = new Date()
           }
         })
         setSelectedStatuses(statusMap)
@@ -145,16 +171,28 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
   const handleCheckboxChange = (idPetugas: string, status: "hadir" | "izin" | "sakit" | "alpha", checked: boolean) => {
     setSelectedStatuses((prev) => {
       const next = { ...prev }
-      next[idPetugas] = checked ? status : "hadir"
+      if (checked) {
+        next[idPetugas] = status
+      } else {
+        // Jika di-uncheck, kembali ke default "hadir"
+        next[idPetugas] = "hadir"
+      }
       return next
     })
 
-    // Jika status hadir dipilih, simpan waktu saat ini
-    if (checked && status === "hadir") {
+    // Jika status hadir dipilih atau di-uncheck (kembali ke hadir), simpan waktu saat ini
+    if ((checked && status === "hadir") || (!checked)) {
       setCheckInTimes((prev) => ({
         ...prev,
         [idPetugas]: new Date(),
       }))
+    } else if (checked && status !== "hadir") {
+      // Jika pilih status selain hadir, hapus check-in time
+      setCheckInTimes((prev) => {
+        const next = { ...prev }
+        delete next[idPetugas]
+        return next
+      })
     }
   }
 
@@ -183,7 +221,7 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
       setSuccess(`Absensi berhasil disimpan untuk ${validPetugas.length} petugas aktif`)
       
       // Tunggu sebentar untuk memastikan data tersimpan di database
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise(resolve => setTimeout(resolve, 1500))
       
       // Refresh data presensi dengan range yang lebih luas untuk memastikan data terbaru muncul
       const today = new Date()
@@ -194,9 +232,21 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
       
       console.log('Refreshed presensi data:', newPresensi.map(p => ({ id_warga: p.id_warga, status: p.status })))
       
-      // Sekarang baru hapus selectedStatuses setelah data ter-refresh
-      setSelectedStatuses({})
-      setCheckInTimes({})
+      // Update selectedStatuses dengan data yang baru disimpan agar tampil di tabel
+      const newStatusMap: Record<string, "hadir" | "izin" | "sakit" | "alpha"> = {}
+      const newCheckInMap: Record<string, Date> = {}
+      
+      validPetugas.forEach((petugas) => {
+        const savedStatus = selectedStatuses[petugas.id] || "hadir"
+        const savedCheckIn = checkInTimes[petugas.id] || new Date()
+        
+        newStatusMap[petugas.id] = savedStatus
+        newCheckInMap[petugas.id] = savedCheckIn
+      })
+      
+      setSelectedStatuses(newStatusMap)
+      setCheckInTimes(newCheckInMap)
+      
     } catch (err) {
       setError("Gagal menyimpan absensi massal")
     } finally {
@@ -267,11 +317,24 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
           <CardDescription>Status sesi ronda dan waktu saat ini</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <div className="text-sm text-muted-foreground">Waktu Saat Ini</div>
               <div className="text-2xl font-mono font-bold">{formatTime(currentTime)}</div>
               <div className="text-sm text-muted-foreground">{formatDate(currentTime)}</div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm text-muted-foreground">Hari Ronda</div>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                <Badge variant="default" className="bg-blue-500">
+                  {getTodayDayName()}
+                </Badge>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {petugas.length > 0 ? `${petugas.length} petugas bertugas` : 'Tidak ada petugas bertugas'}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -305,9 +368,9 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
       <Card>
         <CardHeader className="flex items-center justify-between">
           <div>
-            <CardTitle>Tandai Absensi Petugas</CardTitle>
+            <CardTitle>Tandai Absensi Petugas Ronda Hari Ini</CardTitle>
             <CardDescription>
-              Tandai kehadiran semua Petugas. Jika tidak diceklis berarti hadir.
+              Absensi petugas yang bertugas pada hari {getTodayDayName()}. Jika tidak diceklis berarti hadir.
               {petugas.length > 0 && (
                 <div className="mt-1">
                   <span className="text-xs">
@@ -315,6 +378,13 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                     {petugas.filter(p => !p.id_warga).length > 0 && (
                       <span className="text-yellow-600"> • {petugas.filter(p => !p.id_warga).length} petugas memiliki data tidak lengkap</span>
                     )}
+                  </span>
+                </div>
+              )}
+              {petugas.length === 0 && (
+                <div className="mt-1">
+                  <span className="text-orange-600 text-xs">
+                    Tidak ada petugas yang terjadwal ronda pada hari {getTodayDayName()}
                   </span>
                 </div>
               )}
@@ -338,7 +408,7 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                 <TableRow>
                   <TableHead>Petugas</TableHead>
                   <TableHead>Jabatan</TableHead>
-                  <TableHead>Kelompok</TableHead>
+                  <TableHead>Kelompok & Jadwal</TableHead>
                   <TableHead className="text-center w-24">Hadir</TableHead>
                   <TableHead className="text-center w-24">Izin</TableHead>
                   <TableHead className="text-center w-24">Sakit</TableHead>
@@ -360,7 +430,14 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{p.jabatan || "-"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{p.namaKelompok || "-"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        <div>
+                          <div>{p.namaKelompok || "-"}</div>
+                          <div className="text-xs text-blue-600">
+                            {formatScheduleDisplay((p as any).jadwalHari)}
+                          </div>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center">
                           <Checkbox
@@ -428,7 +505,9 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
             </Table>
             {petugas.length === 0 && (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">Tidak ada petugas aktif.</p>
+                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground font-medium">Tidak ada petugas yang terjadwal ronda hari ini</p>
+                <p className="text-sm text-muted-foreground mt-1">Hari {getTodayDayName()} tidak ada jadwal ronda</p>
               </div>
             )}
           </div>
@@ -451,12 +530,12 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
       {/* Attendance Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Daftar Absensi</CardTitle>
+          <CardTitle>Daftar Absensi Petugas Ronda</CardTitle>
           <CardDescription>
-            Menampilkan {filteredPresensi.length} dari {presensi.length} record absensi hari ini
-            {presensi.length > filteredPresensi.length && (
+            Menampilkan {petugas.length} petugas yang terjadwal ronda pada hari {getTodayDayName()}
+            {filteredPresensi.length > 0 && (
               <span className="text-xs block mt-1">
-                Ada {presensi.length - filteredPresensi.length} record absensi dari hari lain
+                {filteredPresensi.length} record absensi tersimpan hari ini
               </span>
             )}
           </CardDescription>
@@ -473,17 +552,48 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
               </TableHeader>
               <TableBody>
                 {petugas.map((p) => {
-                  // Cari data presensi berdasarkan id_warga, bukan id_petugas
-                  const attendance = presensi.find((pr) => pr.id_warga === p.id_warga)
+                  // Cari data presensi berdasarkan id_warga dari database
+                  const savedAttendance = presensi.find((pr) => pr.id_warga === p.id_warga)
                   
-                  // Prioritaskan status yang dipilih user, lalu dari database
-                  const displayStatus = selectedStatuses[p.id] || "hadir"
+                  // Prioritaskan status yang dipilih user (belum disimpan), 
+                  // kemudian status dari database (sudah disimpan), 
+                  // default ke "hadir"
+                  let displayStatus: "hadir" | "izin" | "sakit" | "alpha" = "hadir"
                   
-                  const checkInTime = checkInTimes[p.id] || (attendance?.check_in ? new Date(attendance.check_in) : null)
+                  if (selectedStatuses[p.id]) {
+                    // Ada status yang dipilih user (belum/baru disimpan)
+                    displayStatus = selectedStatuses[p.id]
+                  } else if (savedAttendance) {
+                    // Ada data dari database
+                    switch (savedAttendance.status as string) {
+                      case "Hadir":
+                        displayStatus = "hadir"
+                        break
+                      case "Izin":
+                        displayStatus = "izin"
+                        break
+                      case "Sakit":
+                        displayStatus = "sakit"
+                        break
+                      case "Tidak Hadir":
+                        displayStatus = "alpha"
+                        break
+                      default:
+                        displayStatus = "hadir"
+                    }
+                  }
+                  
+                  // Untuk check-in time, prioritaskan yang baru dipilih, kemudian dari database
+                  let checkInTime: Date | null = null
+                  if (checkInTimes[p.id]) {
+                    checkInTime = checkInTimes[p.id]
+                  } else if (savedAttendance?.check_in) {
+                    checkInTime = new Date(savedAttendance.check_in)
+                  }
                   
                   // Debug: log untuk memahami data
-                  if (p.id_warga && !attendance) {
-                    console.log(`No attendance found for petugas ${p.namaLengkap} (id_warga: ${p.id_warga})`)
+                  if (p.id_warga && !savedAttendance) {
+                    console.log(`No saved attendance found for petugas ${p.namaLengkap} (id_warga: ${p.id_warga})`)
                   }
                   
                   return (
