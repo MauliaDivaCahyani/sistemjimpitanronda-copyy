@@ -153,22 +153,26 @@ export function PetugasForm({ isOpen, onClose, onSubmit, initialData, mode }: Pe
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Nama Warga - hanya untuk create */}
           {mode === "create" && (
-            <div className="space-y-2">
-              <Label htmlFor="warga">Nama Warga *</Label>
-              <Select value={formData.idWarga} onValueChange={(value) => setFormData({ ...formData, idWarga: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih warga untuk dijadikan petugas" />
-                </SelectTrigger>
-                <SelectContent>
-                  {wargaList.map((warga) => (
-                    <SelectItem key={warga.id} value={warga.id}>
-                      {warga.namaLengkap}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="warga">Nama Warga *</Label>
+            <Select
+              value={String(formData.idWarga || "")}
+              onValueChange={(value) => setFormData({ ...formData, idWarga: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih warga untuk dijadikan petugas" />
+              </SelectTrigger>
+              <SelectContent>
+                {wargaList.map((warga) => (
+                  <SelectItem key={warga.id} value={String(warga.id)}>
+                    {warga.namaLengkap}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
 
           {/* Display nama warga untuk edit */}
           {mode === "edit" && (
@@ -184,7 +188,7 @@ export function PetugasForm({ isOpen, onClose, onSubmit, initialData, mode }: Pe
           <div className="space-y-2">
             <Label htmlFor="kelompokRonda">Kelompok Ronda</Label>
             <Select
-              value={formData.idKelompokRonda}
+              value={String(formData.idKelompokRonda || "none")}
               onValueChange={(value) => setFormData({ ...formData, idKelompokRonda: value })}
             >
               <SelectTrigger>
@@ -193,13 +197,14 @@ export function PetugasForm({ isOpen, onClose, onSubmit, initialData, mode }: Pe
               <SelectContent>
                 <SelectItem value="none">Tidak ada</SelectItem>
                 {kelompokRondaList.map((kelompok) => (
-                  <SelectItem key={kelompok.id} value={kelompok.id}>
+                  <SelectItem key={kelompok.id} value={String(kelompok.id)}>
                     {kelompok.namaKelompok}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
 
           {/* Username */}
           <div className="space-y-2">
@@ -231,7 +236,10 @@ export function PetugasForm({ isOpen, onClose, onSubmit, initialData, mode }: Pe
           {/* Jabatan */}
           <div className="space-y-2">
             <Label htmlFor="jabatan">Jabatan * (Contoh: Ketua RT)</Label>
-            <Select value={formData.jabatan} onValueChange={(value) => setFormData({ ...formData, jabatan: value })}>
+            <Select
+              value={formData.jabatan}
+              onValueChange={(value) => setFormData({ ...formData, jabatan: value })}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Pilih jabatan" />
               </SelectTrigger>
@@ -244,6 +252,7 @@ export function PetugasForm({ isOpen, onClose, onSubmit, initialData, mode }: Pe
               </SelectContent>
             </Select>
           </div>
+
 
           {/* Role */}
           <div className="space-y-2">
@@ -261,23 +270,24 @@ export function PetugasForm({ isOpen, onClose, onSubmit, initialData, mode }: Pe
                 <SelectItem value="super_admin">Super Admin</SelectItem>
               </SelectContent>
             </Select>
+
           </div>
 
           {/* Status */}
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
             <Select
-              value={formData.status}
-              onValueChange={(value: "aktif" | "nonaktif") => setFormData({ ...formData, status: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="aktif">Aktif</SelectItem>
-                <SelectItem value="nonaktif">Nonaktif</SelectItem>
-              </SelectContent>
-            </Select>
+                value={formData.status}
+                onValueChange={(value: "aktif" | "nonaktif") => setFormData({ ...formData, status: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="aktif">Aktif</SelectItem>
+                  <SelectItem value="nonaktif">Nonaktif</SelectItem>
+                </SelectContent>
+              </Select>
           </div>
 
           {/* Info tambahan jika mode create */}

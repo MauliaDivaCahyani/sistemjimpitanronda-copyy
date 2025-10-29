@@ -177,34 +177,56 @@ export function RumahForm({ isOpen, onClose, onSubmit, initialData, mode }: Ruma
           </div>
 
           {/* Kepala Keluarga */}
-          <div className="space-y-2">
-            <Label htmlFor="idKepalaKeluarga">
-              Kepala Keluarga
-              {mode === "edit" && <span className="text-sm text-muted-foreground ml-1">(hanya dari anggota rumah ini)</span>}
-            </Label>
-            <Select
-              value={formData.idKepalaKeluarga}
-              onValueChange={(value) => setFormData({ ...formData, idKepalaKeluarga: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih kepala keluarga" />
-              </SelectTrigger>
-              <SelectContent>
-                {mode === "edit" && <SelectItem value="none">Tidak ada kepala keluarga</SelectItem>}
-                {wargaList.length > 0 ? (
-                  wargaList.map((warga) => (
-                    <SelectItem key={warga.id} value={warga.id}>
-                      {warga.namaLengkap}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="no-data" disabled>
-                    Tidak ada data warga
-                  </SelectItem>
+            <div className="space-y-2">
+              <Label htmlFor="idKepalaKeluarga">
+                Kepala Keluarga
+                {mode === "edit" && (
+                  <span className="text-sm text-muted-foreground ml-1">
+                    (hanya dari anggota rumah ini)
+                  </span>
                 )}
-              </SelectContent>
-            </Select>
-          </div>
+              </Label>
+              <Select
+                value={formData.idKepalaKeluarga}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, idKepalaKeluarga: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder="Pilih kepala keluarga"
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {mode === "edit" && (
+                    <SelectItem value="none">Tidak ada kepala keluarga</SelectItem>
+                  )}
+                  {wargaList.length > 0 ? (
+                    wargaList.map((warga) => (
+                      <SelectItem key={warga.id} value={String(warga.id)}>
+                        {warga.namaLengkap}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-data" disabled>
+                      Tidak ada data warga
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+
+              {/* Tampilkan nama yang dipilih */}
+              {formData.idKepalaKeluarga && formData.idKepalaKeluarga !== "none" && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Dipilih:{" "}
+                  <span className="font-medium text-foreground">
+                    {wargaList.find((w) => String(w.id) === formData.idKepalaKeluarga)
+                      ?.namaLengkap || "Tidak ditemukan"}
+                  </span>
+                </p>
+              )}
+            </div>
+
 
           {/* Status Kepemilikan */}
           <div className="space-y-2">

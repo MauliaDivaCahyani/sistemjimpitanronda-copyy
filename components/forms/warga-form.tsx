@@ -93,22 +93,33 @@ export function WargaForm({ isOpen, onClose, onSubmit, initialData, mode }: Warg
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Pilihan Rumah */}
-          <div className="space-y-2">
-            <Label htmlFor="rumah">Rumah (Contoh: Jl. Merdeka No. 1)</Label>
-            <Select value={formData.idRumah} onValueChange={(value) => setFormData({ ...formData, idRumah: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih rumah" />
-              </SelectTrigger>
-              <SelectContent>
-                {rumahList.map((rumah) => (
-                  <SelectItem key={rumah.id} value={rumah.id}>
-                    {rumah.alamat} (RT {rumah.rt}/RW {rumah.rw})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        {/* Pilihan Rumah */}
+        <div className="space-y-2">
+          <Label htmlFor="rumah">Rumah (Contoh: Jl. Merdeka No. 1)</Label>
+          <Select
+            value={formData.idRumah?.toString() || ""}
+            onValueChange={(value) => setFormData({ ...formData, idRumah: value })}
+          >
+            <SelectTrigger>
+              <SelectValue
+                placeholder={
+                  formData.idRumah
+                    ? rumahList.find((r) => r.id === formData.idRumah)?.alamat ||
+                      "Pilih rumah"
+                    : "Pilih rumah"
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {rumahList.map((rumah) => (
+                <SelectItem key={rumah.id} value={rumah.id.toString()}>
+                  {rumah.alamat} (RT {rumah.rt}/RW {rumah.rw})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
 
           {/* Nama Lengkap */}
           <div className="space-y-2">
