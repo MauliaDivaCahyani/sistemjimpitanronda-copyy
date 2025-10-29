@@ -15,6 +15,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -35,6 +45,8 @@ export default function JenisDanaPage() {
   const [selectedJenis, setSelectedJenis] = useState<JenisDana | null>(null)
   const [jenisDana, setJenisDana] = useState<JenisDana[]>([])
   const [loading, setLoading] = useState(true)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [jenisDanaToDelete, setJenisDanaToDelete] = useState<JenisDana | null>(null)
 
   const [formData, setFormData] = useState<JenisDanaFormData>({
     namaDana: "",
@@ -110,16 +122,23 @@ export default function JenisDanaPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Apakah Anda yakin ingin menghapus jenis dana ini?")) {
+  const handleDelete = (jenis: JenisDana) => {
+    setJenisDanaToDelete(jenis)
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDelete = async () => {
+    if (jenisDanaToDelete) {
       try {
-        await deleteJenisDana(id)
+        await deleteJenisDana(jenisDanaToDelete.id)
         await fetchJenisDana() // Refresh data setelah delete
       } catch (error) {
         console.error("Error deleting jenis dana:", error)
         alert("Gagal menghapus jenis dana!")
       }
     }
+    setShowDeleteDialog(false)
+    setJenisDanaToDelete(null)
   }
 
   const resetForm = () => {
@@ -251,7 +270,7 @@ export default function JenisDanaPage() {
                     variant="outline"
                     size="sm"
                     className="text-red-600 hover:text-red-700 bg-transparent"
-                    onClick={() => handleDelete(jenis.id)}
+                    onClick={() => handleDelete(jenis)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -318,6 +337,27 @@ export default function JenisDanaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Jenis Dana</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus jenis dana "{jenisDanaToDelete?.namaDana}"? Tindakan ini tidak dapat
+              dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   )
 }

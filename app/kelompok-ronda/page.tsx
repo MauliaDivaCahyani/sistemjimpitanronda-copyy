@@ -16,6 +16,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Search, Plus, Edit, Trash2, Users, ChevronDown, ChevronUp, CalendarDays } from "lucide-react"
@@ -36,6 +46,8 @@ export default function KelompokRondaPage() {
   const [selectedKelompok, setSelectedKelompok] = useState<KelompokRonda | null>(null)
   const [expandedMembers, setExpandedMembers] = useState<Record<string, boolean>>({})
   const [membersByKelompok, setMembersByKelompok] = useState<Record<string, any[]>>({})
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [kelompokToDelete, setKelompokToDelete] = useState<KelompokRonda | null>(null)
   const [formData, setFormData] = useState({
     namaKelompok: "",
     keteranganKelompok: "",
@@ -100,9 +112,14 @@ export default function KelompokRondaPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Apakah Anda yakin ingin menghapus kelompok ronda ini?")) {
-      await deleteKelompokRonda(id)
+  const handleDelete = (kelompok: KelompokRonda) => {
+    setKelompokToDelete(kelompok)
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDelete = async () => {
+    if (kelompokToDelete) {
+      await deleteKelompokRonda(kelompokToDelete.id)
       window.location.reload()
     }
   }
@@ -269,7 +286,7 @@ export default function KelompokRondaPage() {
                           variant="outline"
                           size="sm"
                           className="text-red-600 hover:text-red-700 bg-transparent"
-                          onClick={() => handleDelete(kelompok.id)}
+                          onClick={() => handleDelete(kelompok)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -321,6 +338,27 @@ export default function KelompokRondaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Kelompok Ronda</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus kelompok ronda "{kelompokToDelete?.namaKelompok}"? Tindakan ini tidak
+              dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   )
 }

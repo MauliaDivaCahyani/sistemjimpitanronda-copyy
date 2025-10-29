@@ -1,16 +1,7 @@
 USE fundraising_dbcopyyy;
 
-INSERT INTO presensi (
-  id_warga,
-  id_kelompok_ronda,
-  tanggal,
-  check_in,
-  check_out,
-  keterangan,
-  status,
-  id_petugas
-)
+INSERT INTO presensi (id_warga, id_kelompok_ronda, tanggal, check_in, check_out, status, id_petugas, keterangan)
 VALUES
-(7, 1, '2025-10-01', '2025-10-01 20:00:00', '2025-10-02 04:00:00', 'Ronda malam lancar', 'Hadir', 16),
-(8, 1, '2025-10-02', '2025-10-02 20:00:00', '2025-10-03 04:00:00', 'Menemani ronda', 'Hadir', 17),
-(9, 2, '2025-10-03', NULL, NULL, 'Izin karena sakit', 'Izin', 18);
+(1, 1, '2025-10-28', '2025-10-28 20:00:00', '2025-10-29 04:00:00', 'Hadir', 1, 'Ronda malam berjalan lancar'),
+(2, 1, '2025-10-28', '2025-10-28 20:15:00', '2025-10-29 03:50:00', 'Hadir', 1, 'Menjaga di pos timur'),
+(3, 2, '2025-10-28', NULL, NULL, 'Tidak Hadir', 2, 'Sedang sakit');

@@ -1,9 +1,7 @@
 USE fundraising_dbcopyyy;
 
-INSERT INTO rumah (alamat, rt, rw, kode_barcode, status_kepemilikan, id_kepala_keluarga)
+INSERT INTO rumah (alamat, rt, rw, kode_barcode, status_kepemilikan)
 VALUES
-('Jl. Melati No. 1', '01', '02', 'BR001', 'Milik Sendiri', NULL),
-('Jl. Mawar No. 5', '01', '03', 'BR002', 'Kontrak', NULL),
-('Jl. Kenanga No. 9', '02', '04', 'BR003', 'Sewa', NULL),
-('Jl. Anggrek No. 12', '02', '05', 'BR004', 'Milik Sendiri', NULL),
-('Jl. Cempaka No. 7', '03', '01', 'BR005', 'Milik Sendiri', NULL);
+('Jl. Melati No. 10', '01', '05', 'RMH001', 'Milik Sendiri'),
+('Jl. Mawar No. 12', '01', '05', 'RMH002', 'Sewa'),
+('Jl. Kenanga No. 8', '02', '06', 'RMH003', 'Kontrak');

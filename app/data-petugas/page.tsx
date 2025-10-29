@@ -15,6 +15,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Search, Plus, Eye, Edit, Trash2 } from "lucide-react"
 import { getAllPetugas, createPetugas, updatePetugas, deletePetugas, getAllKelompokRonda } from "@/lib/database"
 import { PetugasForm } from "@/components/forms/petugas-form"
@@ -29,6 +39,8 @@ export default function DataPetugasPage() {
   const [selectedPetugas, setSelectedPetugas] = useState<User | null>(null)
   const [formMode, setFormMode] = useState<"create" | "edit">("create")
   const [kelompokRondaList, setKelompokRondaList] = useState<any[]>([])
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [petugasToDelete, setPetugasToDelete] = useState<User | null>(null)
 
   const [petugas, setPetugas] = useState<User[]>([])
 
@@ -119,10 +131,15 @@ export default function DataPetugasPage() {
     setIsEditDialogOpen(true)
   }
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Apakah Anda yakin ingin menghapus petugas ini?")) {
+  const handleDelete = (petugas: User) => {
+    setPetugasToDelete(petugas)
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDelete = async () => {
+    if (petugasToDelete) {
       try {
-        await deletePetugas(id)
+        await deletePetugas(petugasToDelete.id)
         toast({
           title: "Berhasil",
           description: "Petugas berhasil dihapus",
@@ -136,6 +153,8 @@ export default function DataPetugasPage() {
         })
       }
     }
+    setShowDeleteDialog(false)
+    setPetugasToDelete(null)
   }
 
   return (
@@ -227,7 +246,7 @@ export default function DataPetugasPage() {
                     variant="outline"
                     size="sm"
                     className="text-red-600 hover:text-red-700 bg-transparent"
-                    onClick={() => handleDelete(petugas.id)}
+                    onClick={() => handleDelete(petugas)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -332,6 +351,27 @@ export default function DataPetugasPage() {
         initialData={selectedPetugas}
         mode="edit"
       />
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Data Petugas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus data petugas "{petugasToDelete?.namaLengkap}"? Tindakan ini tidak dapat
+              dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   )
 }
