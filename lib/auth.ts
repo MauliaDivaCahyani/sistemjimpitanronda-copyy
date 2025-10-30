@@ -1,55 +1,124 @@
 import type { User, UserRole } from "@/types/auth"
 
-// Mock data untuk demo
-const mockUsers: User[] = [
-  {
-    id: "1",
-    nama: "Ahmad Wijaya",
-    role: "warga",
-    nomorHp: "081234567890",
-    kelompokRonda: "Kelompok A",
-    isActive: true,
-  },
-  {
-    id: "2",
-    nama: "Siti Nurhaliza",
-    role: "petugas",
-    username: "petugas1",
-    kelompokRonda: "Kelompok A",
-    isActive: true,
-  },
-  {
-    id: "3",
-    nama: "Budi Santoso",
-    role: "admin",
-    username: "admin1",
-    isActive: true,
-  },
-  {
-    id: "4",
-    nama: "Maya Sari",
-    role: "super_admin",
-    username: "superadmin",
-    isActive: true,
-  },
-]
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5006/api"
 
 export const authenticateUser = async (
   identifier: string,
   password: string,
   loginType: "phone" | "username",
 ): Promise<User | null> => {
-  // Simulasi delay API
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+  try {
+    console.log("[AUTH] Making login request to:", `${API_BASE_URL}/auth/login`)
+    
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        identifier,
+        password,
+        loginType,
+      }),
+    })
 
-  if (loginType === "phone") {
-    // Login untuk warga menggunakan nomor HP
-    const user = mockUsers.find((u) => u.nomorHp === identifier && u.role === "warga")
-    return user || null
-  } else {
-    // Login untuk petugas, admin, super admin menggunakan username
-    const user = mockUsers.find((u) => u.username === identifier && u.role !== "warga")
-    return user || null
+    console.log("[AUTH] Response status:", response.status)
+    const data = await response.json()
+    console.log("[AUTH] Response data:", data)
+
+    if (!response.ok) {
+      console.error("Login failed:", data.message)
+      return null
+    }
+
+    if (data.success && data.data?.user) {
+      // Store token in localStorage
+      if (data.data.token) {
+        localStorage.setItem("authToken", data.data.token)
+      }
+      
+      // Store user data in localStorage
+      localStorage.setItem("currentUser", JSON.stringify(data.data.user))
+      
+      return data.data.user
+    }
+
+    return null
+  } catch (error) {
+    console.error("Authentication error:", error)
+    return null
+  }
+}
+
+export const verifyToken = async (): Promise<User | null> => {
+  try {
+    const token = localStorage.getItem("authToken")
+    
+    if (!token) {
+      return null
+    }
+
+    const response = await fetch(`${API_BASE_URL}/auth/verify-token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      // Token invalid, remove from storage
+      localStorage.removeItem("authToken")
+      localStorage.removeItem("currentUser")
+      return null
+    }
+
+    if (data.success && data.data?.user) {
+      // Update user data in localStorage
+      localStorage.setItem("currentUser", JSON.stringify(data.data.user))
+      return data.data.user
+    }
+
+    return null
+  } catch (error) {
+    console.error("Token verification error:", error)
+    localStorage.removeItem("authToken")
+    localStorage.removeItem("currentUser")
+    return null
+  }
+}
+
+export const logout = async (): Promise<void> => {
+  try {
+    const token = localStorage.getItem("authToken")
+    
+    if (token) {
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      })
+    }
+  } catch (error) {
+    console.error("Logout error:", error)
+  } finally {
+    // Always clear local storage
+    localStorage.removeItem("authToken")
+    localStorage.removeItem("currentUser")
+  }
+}
+
+export const getCurrentUser = (): User | null => {
+  try {
+    const userData = localStorage.getItem("currentUser")
+    return userData ? JSON.parse(userData) : null
+  } catch (error) {
+    console.error("Error getting current user:", error)
+    return null
   }
 }
 

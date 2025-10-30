@@ -16,6 +16,8 @@ export default function HomePage() {
 
   const handleLogin = (loggedInUser: User) => {
     localStorage.setItem("currentUser", JSON.stringify(loggedInUser))
+    
+    // Redirect semua user ke dashboard utama yang sudah ada
     router.push("/dashboard")
   }
 

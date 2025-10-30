@@ -5,6 +5,7 @@ import dotenv from "dotenv"
 import { testConnection } from "./config/database.js"
 
 // ✅ Import semua routes
+import authRoutes from "./routes/authRoutes.js"
 import petugasRoutes from "./routes/petugasRoutes.js"
 import wargaRoutes from "./routes/wargaRoutes.js"
 import rumahRoutes from "./routes/rumahRoutes.js"
@@ -51,6 +52,7 @@ app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
 // ✅ Register API routes
+app.use("/api/auth", authRoutes)
 app.use("/api/petugas", petugasRoutes)
 app.use("/api/warga", wargaRoutes)
 app.use("/api/rumah", rumahRoutes)
@@ -67,6 +69,7 @@ app.get("/api", (req, res) => {
     success: true,
     message: "Welcome to the Jimpitan API",
     available_routes: [
+      "/api/auth",
       "/api/petugas",
       "/api/warga",
       "/api/rumah",
