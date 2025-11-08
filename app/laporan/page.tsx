@@ -253,7 +253,7 @@ export default function LaporanPage() {
           <div className="flex justify-end mt-4">
             <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-emerald-600 hover:bg-emerald-700">
+                <Button className="bg-primary hover:bg-primary/90">
                   <Download className="h-4 w-4 mr-2" />
                   Export Laporan
                 </Button>
@@ -272,7 +272,7 @@ export default function LaporanPage() {
                     <File className="h-5 w-5 mr-3 text-red-600" />
                     <div className="text-left">
                       <div className="font-semibold">PDF Document</div>
-                      <div className="text-sm text-gray-500">Format dokumen untuk cetak dan arsip</div>
+                      <div className="text-sm text-muted-foreground">Format dokumen untuk cetak dan arsip</div>
                     </div>
                   </Button>
                   <Button
@@ -280,10 +280,10 @@ export default function LaporanPage() {
                     className="justify-start h-auto py-4 bg-transparent"
                     onClick={() => handleExportReport("excel")}
                   >
-                    <FileSpreadsheet className="h-5 w-5 mr-3 text-green-600" />
+                    <FileSpreadsheet className="h-5 w-5 mr-3 text-primary" />
                     <div className="text-left">
                       <div className="font-semibold">Excel Spreadsheet</div>
-                      <div className="text-sm text-gray-500">Format untuk analisis dan perhitungan</div>
+                      <div className="text-sm text-muted-foreground">Format untuk analisis dan perhitungan</div>
                     </div>
                   </Button>
                   <Button
@@ -294,7 +294,7 @@ export default function LaporanPage() {
                     <FileText className="h-5 w-5 mr-3 text-blue-600" />
                     <div className="text-left">
                       <div className="font-semibold">CSV File</div>
-                      <div className="text-sm text-gray-500">Format universal untuk import data</div>
+                      <div className="text-sm text-muted-foreground">Format universal untuk import data</div>
                     </div>
                   </Button>
                 </div>
@@ -309,10 +309,10 @@ export default function LaporanPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center">
-              <DollarSign className="h-8 w-8 text-emerald-600" />
+              <DollarSign className="h-8 w-8 text-primary" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Jimpitan</p>
-                <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalJimpitan)}</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Jimpitan</p>
+                <p className="text-2xl font-bold text-card-foreground">{formatCurrency(totalJimpitan)}</p>
               </div>
             </div>
           </CardContent>
@@ -323,8 +323,8 @@ export default function LaporanPage() {
             <div className="flex items-center">
               <FileText className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Transaksi</p>
-                <p className="text-2xl font-bold text-gray-900">{totalTransaksi}</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Transaksi</p>
+                <p className="text-2xl font-bold text-card-foreground">{totalTransaksi}</p>
               </div>
             </div>
           </CardContent>
@@ -333,10 +333,10 @@ export default function LaporanPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center">
-              <Users className="h-8 w-8 text-green-600" />
+              <Users className="h-8 w-8 text-primary" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Warga Sudah Bayar</p>
-                <p className="text-2xl font-bold text-gray-900">{wargaBayar}</p>
+                <p className="text-sm font-medium text-muted-foreground">Warga Sudah Bayar</p>
+                <p className="text-2xl font-bold text-card-foreground">{wargaBayar}</p>
               </div>
             </div>
           </CardContent>
@@ -347,8 +347,8 @@ export default function LaporanPage() {
             <div className="flex items-center">
               <Clock className="h-8 w-8 text-red-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Warga Belum Bayar</p>
-                <p className="text-2xl font-bold text-gray-900">{wargaBelumBayar}</p>
+                <p className="text-sm font-medium text-muted-foreground">Warga Belum Bayar</p>
+                <p className="text-2xl font-bold text-card-foreground">{wargaBelumBayar}</p>
               </div>
             </div>
           </CardContent>
@@ -372,8 +372,8 @@ export default function LaporanPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-4">
                     <div className="min-w-0">
-                      <h4 className="font-semibold text-gray-900">{rumah.kepalaNama}</h4>
-                      <p className="text-sm text-gray-600">{rumah.alamat}</p>
+                      <h4 className="font-semibold text-card-foreground">{rumah.kepalaNama}</h4>
+                      <p className="text-sm text-muted-foreground">{rumah.alamat}</p>
                     </div>
                     <div className="flex gap-2">
                       <Badge variant="outline">RT {rumah.rt}</Badge>
@@ -385,12 +385,12 @@ export default function LaporanPage() {
                 {/* right: totals + status */}
                 <div className="flex items-center gap-3 sm:gap-4 self-start sm:self-auto">
                   <div className="text-right">
-                    <p className="font-semibold text-gray-900">{formatCurrency(rumah.totalBayar)}</p>
-                    <p className="text-sm text-gray-600">{rumah.jumlahTransaksi} transaksi</p>
+                    <p className="font-semibold text-card-foreground">{formatCurrency(rumah.totalBayar)}</p>
+                    <p className="text-sm text-muted-foreground">{rumah.jumlahTransaksi} transaksi</p>
                   </div>
                   <Badge
                     variant={rumah.sudahBayar ? "default" : "destructive"}
-                    className={rumah.sudahBayar ? "bg-emerald-100 text-emerald-700" : ""}
+                    className={rumah.sudahBayar ? "bg-primary/10 text-primary" : ""}
                   >
                     {rumah.sudahBayar ? "Sudah Bayar" : "Belum Bayar"}
                   </Badge>

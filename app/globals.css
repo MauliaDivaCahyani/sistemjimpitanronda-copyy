@@ -40,6 +40,39 @@
   --sidebar-ring: rgba(76, 175, 80, 0.5);
 }
 
+/* Theme: Blue */
+[data-theme="blue"] {
+  --primary: #2196f3;
+  --secondary: #64b5f6;
+  --accent: #64b5f6;
+  --ring: rgba(33, 150, 243, 0.5);
+  --sidebar-primary: #2196f3;
+  --sidebar-accent: #64b5f6;
+  --sidebar-ring: rgba(33, 150, 243, 0.5);
+  --chart-1: #2196f3;
+  --chart-2: #64b5f6;
+  --chart-3: #bbdefb;
+  --chart-4: #90caf9;
+  --chart-5: #1976d2;
+}
+
+/* Theme: Purple */
+[data-theme="purple"] {
+  --primary: #9c27b0;
+  --secondary: #ba68c8;
+  --accent: #ba68c8;
+  --ring: rgba(156, 39, 176, 0.5);
+  --sidebar-primary: #9c27b0;
+  --sidebar-accent: #ba68c8;
+  --sidebar-ring: rgba(156, 39, 176, 0.5);
+  --chart-1: #9c27b0;
+  --chart-2: #ba68c8;
+  --chart-3: #e1bee7;
+  --chart-4: #ce93d8;
+  --chart-5: #7b1fa2;
+}
+
+/* Dark mode base */
 .dark {
   --background: #1a1a1a;
   --foreground: #ffffff;
@@ -73,6 +106,38 @@
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #374151;
   --sidebar-ring: rgba(76, 175, 80, 0.5);
+}
+
+/* Dark mode + Blue theme */
+.dark[data-theme="blue"] {
+  --primary: #42a5f5;
+  --secondary: #64b5f6;
+  --accent: #64b5f6;
+  --ring: rgba(66, 165, 245, 0.5);
+  --sidebar-primary: #42a5f5;
+  --sidebar-accent: #64b5f6;
+  --sidebar-ring: rgba(66, 165, 245, 0.5);
+  --chart-1: #42a5f5;
+  --chart-2: #64b5f6;
+  --chart-3: #90caf9;
+  --chart-4: #bbdefb;
+  --chart-5: #1976d2;
+}
+
+/* Dark mode + Purple theme */
+.dark[data-theme="purple"] {
+  --primary: #ab47bc;
+  --secondary: #ba68c8;
+  --accent: #ba68c8;
+  --ring: rgba(171, 71, 188, 0.5);
+  --sidebar-primary: #ab47bc;
+  --sidebar-accent: #ba68c8;
+  --sidebar-ring: rgba(171, 71, 188, 0.5);
+  --chart-1: #ab47bc;
+  --chart-2: #ba68c8;
+  --chart-3: #ce93d8;
+  --chart-4: #e1bee7;
+  --chart-5: #7b1fa2;
 }
 
 @theme inline {

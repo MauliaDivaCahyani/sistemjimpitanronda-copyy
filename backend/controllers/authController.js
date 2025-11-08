@@ -28,7 +28,8 @@ export const login = async (req, res) => {
       userQuery = `
         SELECT w.id_warga as id, w.nama_lengkap as nama, w.nomor_hp as nomorHp, 
                'warga' as role, w.status_aktif as status,
-               w.nomor_hp as identifier_field
+               w.nomor_hp as identifier_field, w.password_custom,
+               w.email, w.alamat
         FROM warga w 
         WHERE w.nomor_hp = ? AND w.status_aktif = 'Aktif'
       `
@@ -39,12 +40,14 @@ export const login = async (req, res) => {
         SELECT p.id_petugas as id, w.nama_lengkap as nama, p.username, 
                p.role, p.jabatan,
                CASE 
-                 WHEN LOWER(p.jabatan) LIKE '%superadmin%' OR LOWER(p.jabatan) LIKE '%super admin%' THEN 'super_admin'
-                 WHEN p.role = 'Admin' THEN 'admin' 
-                 ELSE 'petugas'
+                 WHEN LOWER(p.role) = 'superadmin' OR LOWER(p.jabatan) LIKE '%superadmin%' OR LOWER(p.jabatan) LIKE '%super admin%' THEN 'super_admin'
+                 WHEN LOWER(p.role) = 'admin' THEN 'admin' 
+                 WHEN LOWER(p.role) = 'petugas' THEN 'petugas'
+                 ELSE LOWER(REPLACE(p.role, ' ', '_'))
                END as user_role,
                p.status, p.password as stored_password, p.username as identifier_field,
-               kr.nama_kelompok as kelompokRonda
+               kr.nama_kelompok as kelompokRonda,
+               w.nomor_hp as nomorHp, w.email, w.alamat
         FROM petugas p
         LEFT JOIN warga w ON p.id_warga = w.id_warga
         LEFT JOIN kelompok_ronda kr ON p.id_kelompok_ronda = kr.id_kelompok_ronda
@@ -69,14 +72,22 @@ export const login = async (req, res) => {
     }
 
     user = rows[0]
-    console.log("[AUTH] User found:", { id: user.id, nama: user.nama, role: user.user_role || user.role, jabatan: user.jabatan })
+    console.log("[AUTH] User found:", { 
+      id: user.id, 
+      nama: user.nama, 
+      role_db: user.role,
+      jabatan: user.jabatan,
+      computed_role: user.user_role || user.role
+    })
 
     // Password verification
     let isPasswordValid = false
 
     if (loginType === "phone") {
-      // For warga, password default adalah "1234"
-      isPasswordValid = password === "1234"
+      // For warga, check password_custom first, if null use default "1234"
+      const wargaPassword = user.password_custom || "1234"
+      isPasswordValid = password === wargaPassword
+      console.log("[AUTH] Warga password check:", { hasCustomPassword: !!user.password_custom })
     } else {
       // For petugas/admin/superadmin, compare with stored password
       if (user.stored_password) {
@@ -123,6 +134,8 @@ export const login = async (req, res) => {
           role: finalRole,
           username: user.username || undefined,
           nomorHp: user.nomorHp || undefined,
+          email: user.email || undefined,
+          alamat: user.alamat || undefined,
           kelompokRonda: user.kelompokRonda || undefined,
           isActive: true
         },

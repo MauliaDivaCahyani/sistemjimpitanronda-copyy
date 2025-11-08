@@ -37,6 +37,7 @@ interface HeaderProps {
   title: string
   subtitle?: string
   onOpenMenu?: () => void
+  userRole?: string
 }
 
 interface Notification {
@@ -239,7 +240,7 @@ const sampleSearchData: SearchResult[] = [
   },
 ]
 
-export function Header({ title, subtitle, onOpenMenu }: HeaderProps) {
+export function Header({ title, subtitle, onOpenMenu, userRole }: HeaderProps) {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>(sampleNotifications)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -287,7 +288,15 @@ export function Header({ title, subtitle, onOpenMenu }: HeaderProps) {
     document.documentElement.classList.toggle("dark", newTheme)
 
     try {
-      localStorage.setItem("theme", newTheme ? "dark" : "light")
+      // Simpan dark mode PER USER - gunakan user.id yang pasti ada
+      const savedUser = localStorage.getItem("currentUser")
+      if (savedUser) {
+        const parsedUser = JSON.parse(savedUser)
+        const userId = parsedUser.id // Gunakan user.id yang pasti ada
+        const userDarkModeKey = `darkMode_user_${userId}`
+        localStorage.setItem(userDarkModeKey, newTheme.toString())
+        console.log("🌙 Dark mode toggled for user", userId, "(", parsedUser.nama, "):", newTheme, "Key:", userDarkModeKey)
+      }
     } catch (error) {
       console.log("LocalStorage not available")
     }
@@ -306,7 +315,7 @@ export function Header({ title, subtitle, onOpenMenu }: HeaderProps) {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case "success":
-        return <CheckCircle className="h-4 w-4 text-green-500" />
+        return <CheckCircle className="h-4 w-4 text-primary" />
       case "warning":
         return <AlertCircle className="h-4 w-4 text-yellow-500" />
       default:
@@ -339,7 +348,7 @@ export function Header({ title, subtitle, onOpenMenu }: HeaderProps) {
       case "warga":
         return <Users className="h-4 w-4 text-blue-500" />
       case "petugas":
-        return <UserCheck className="h-4 w-4 text-green-500" />
+        return <UserCheck className="h-4 w-4 text-primary" />
       case "rumah":
         return <Building className="h-4 w-4 text-purple-500" />
       case "transaksi":
@@ -386,17 +395,19 @@ export function Header({ title, subtitle, onOpenMenu }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">
-          <Button
-            variant="outline"
-            className="relative hidden sm:flex w-40 md:w-64 justify-start text-sm text-muted-foreground bg-transparent"
-            onClick={() => setSearchOpen(true)}
-          >
-            <Search className="mr-2 h-4 w-4" />
-            Cari data...
-            <kbd className="pointer-events-none absolute right-1.5 top-1.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-              <span className="text-xs">⌘</span>K
-            </kbd>
-          </Button>
+          {userRole !== 'warga' && (
+            <Button
+              variant="outline"
+              className="relative hidden sm:flex w-40 md:w-64 justify-start text-sm text-muted-foreground bg-transparent"
+              onClick={() => setSearchOpen(true)}
+            >
+              <Search className="mr-2 h-4 w-4" />
+              Cari data...
+              <kbd className="pointer-events-none absolute right-1.5 top-1.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                <span className="text-xs">⌘</span>K
+              </kbd>
+            </Button>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -46,12 +46,25 @@ export default function DataPetugasPage() {
 
   const fetchPetugas = async () => {
     try {
+      console.log("🔄 Fetching petugas data...")
       const data = await getAllPetugas()
+      console.log("✅ Received petugas data:", data.length, "items")
+      
       const mappedData = (Array.isArray(data) ? data : []).map((item: any) => ({
         ...item,
         statusUser: item.status?.toLowerCase() === "aktif",
         namaLengkap: item.namaWarga || item.namaLengkap || "Tidak diketahui",
       }))
+
+      // Log specific users untuk debugging
+      const adminUsers = mappedData.filter((p: any) => 
+        ['Superadmin1', 'Admin13'].includes(p.username)
+      )
+      console.log("🔍 Admin users in frontend:", adminUsers.map((u: any) => ({
+        username: u.username,
+        role: u.role,
+        namaLengkap: u.namaLengkap
+      })))
 
       setPetugas(mappedData)
     } catch (err) {
@@ -70,6 +83,7 @@ export default function DataPetugasPage() {
   }
 
   useEffect(() => {
+    console.log("🚀 Component mounted, fetching data...")
     fetchPetugas()
     fetchKelompokRonda()
   }, [])
@@ -161,7 +175,7 @@ export default function DataPetugasPage() {
     <DashboardLayout title="Data Petugas">
       <div className="flex flex-col sm:flex-row items-center justify-between mb-6">
         <div className="relative w-full sm:w-auto mb-3 sm:mb-0">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             placeholder="Cari nama, username, atau jabatan..."
             value={searchTerm}
@@ -170,7 +184,7 @@ export default function DataPetugasPage() {
           />
         </div>
 
-        <Button onClick={handleCreate} className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto">
+        <Button onClick={handleCreate} className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Tambah Petugas
         </Button>
@@ -191,7 +205,7 @@ export default function DataPetugasPage() {
                       <AvatarImage
                         src={`/abstract-geometric-shapes.png?height=48&width=48&query=${petugas.namaLengkap}`}
                       />
-                      <AvatarFallback className="bg-emerald-100 text-emerald-700">
+                      <AvatarFallback >
                         {(petugas.namaLengkap ?? petugas.username ?? "P")
                           .split(" ")
                           .map((n) => n[0])
@@ -200,13 +214,12 @@ export default function DataPetugasPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <h3 className="font-semibold text-gray-900">{petugas.namaLengkap}</h3>
-                      <p className="text-sm text-gray-600">{petugas.jabatan ?? "N/A"}</p>
+                      <h3 className="font-semibold text-card-foreground">{petugas.namaLengkap}</h3>
+                      <p className="text-sm text-muted-foreground">{petugas.jabatan ?? "N/A"}</p>
                     </div>
                   </div>
                   <Badge
                     variant={petugas.statusUser ? "default" : "secondary"}
-                    className="bg-emerald-100 text-emerald-700"
                   >
                     {petugas.statusUser ? "Aktif" : "Nonaktif"}
                   </Badge>
@@ -262,7 +275,7 @@ export default function DataPetugasPage() {
                 <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16">
                     <AvatarImage src={`/.jpg?key=9afnj&height=64&width=64&query=${selectedPetugas.namaLengkap}`} />
-                    <AvatarFallback className="bg-emerald-100 text-emerald-700 text-2xl font-bold">
+                    <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
                       {(selectedPetugas?.namaLengkap ?? selectedPetugas?.username ?? "P")
                         .split(" ")
                         .map((n) => n[0])
@@ -277,7 +290,7 @@ export default function DataPetugasPage() {
                 </div>
                 <Badge
                   variant={selectedPetugas.statusUser ? "default" : "secondary"}
-                  className="bg-emerald-500 text-white"
+                  className="bg-primary text-white"
                 >
                   {selectedPetugas.statusUser ? "Aktif" : "Nonaktif"}
                 </Badge>
@@ -297,11 +310,15 @@ export default function DataPetugasPage() {
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Role:</span>
                   <span className="font-medium capitalize">
-                    {selectedPetugas.role === "super_admin"
-                      ? "Super Admin"
-                      : selectedPetugas.role === "admin"
-                        ? "Admin"
-                        : "Petugas"}
+                    {(() => {
+                      const roleStr = String(selectedPetugas.role || '').toLowerCase();
+                      if (roleStr === 'superadmin' || roleStr === 'super_admin') return 'Super Admin';
+                      if (roleStr === 'admin') return 'Admin';
+                      if (roleStr === 'petugas') return 'Petugas';
+                      if (roleStr === 'warga') return 'Warga';
+                      // Fallback - tampilkan as-is dari backend
+                      return selectedPetugas.role || 'Petugas';
+                    })()}
                   </span>
                 </div>
 

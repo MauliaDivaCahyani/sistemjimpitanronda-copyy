@@ -81,7 +81,7 @@ export default function NotificationsPage() {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case "success":
-        return <CheckCircle className="h-5 w-5 text-green-500" />
+        return <CheckCircle className="h-5 w-5 text-primary" />
       case "warning":
         return <AlertCircle className="h-5 w-5 text-yellow-500" />
       default:
@@ -165,7 +165,7 @@ export default function NotificationsPage() {
           {unreadNotifications.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
-                <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
+                <CheckCircle className="h-12 w-12 mx-auto mb-4 text-primary" />
                 <p className="text-muted-foreground">Semua notifikasi sudah dibaca</p>
               </CardContent>
             </Card>

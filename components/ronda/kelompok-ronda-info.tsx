@@ -60,6 +60,20 @@ export function KelompokRondaInfo({ className, userRole = "petugas" }: KelompokR
 
   useEffect(() => {
     fetchRondaInfo()
+    
+    // Event listener untuk refresh data saat halaman di-focus kembali
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Page is visible again, refreshing ronda info...')
+        fetchRondaInfo()
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   const fetchRondaInfo = async () => {
@@ -69,8 +83,32 @@ export function KelompokRondaInfo({ className, userRole = "petugas" }: KelompokR
       const result = await response.json()
 
       if (result.success) {
+        console.log('=== KELOMPOK RONDA INFO RESPONSE ===')
+        console.log('API Response:', result.data)
+        console.log('Today groups:', result.data.today.groups.length)
+        console.log('Today members:', result.data.today.members.length)
+        console.log('Yesterday groups:', result.data.yesterday.groups.length)
+        console.log('Yesterday members:', result.data.yesterday.members.length)
+        
+        // Detail status untuk today members
+        console.log('Today member statuses:')
+        result.data.today.members.forEach((m: any) => {
+          console.log(`  - ${m.namaLengkap}: "${m.status}" (kelompok: ${m.namaKelompok})`)
+        })
+        
+        console.log('\nYesterday member statuses:')
+        result.data.yesterday.members.forEach((m: any) => {
+          console.log(`  - ${m.namaLengkap}: "${m.status}" (kelompok: ${m.namaKelompok})`)
+        })
+        
         // Group members by kelompok for easier display
         const processData = (info: RondaInfo) => {
+          console.log('Processing info, members count:', info.members.length)
+          console.log('Member statuses from API:', info.members.map(m => ({ 
+            name: m.namaLengkap, 
+            status: m.status 
+          })))
+          
           const groupedMembers = info.members.reduce((acc, member) => {
             if (!acc[member.kelompokId]) {
               acc[member.kelompokId] = []
@@ -98,6 +136,8 @@ export function KelompokRondaInfo({ className, userRole = "petugas" }: KelompokR
           today: processData(result.data.today),
           yesterday: processData(result.data.yesterday)
         })
+        
+        console.log('=== DATA PROCESSED ===')
       } else {
         setError(result.message || "Gagal memuat data kelompok ronda")
       }
@@ -110,13 +150,32 @@ export function KelompokRondaInfo({ className, userRole = "petugas" }: KelompokR
   }
 
   const getStatusBadge = (status: string) => {
+    // Normalisasi status (case insensitive)
+    const normalizedStatus = status ? status.trim() : ''
+    
     const statusConfig = {
-      "Hadir": { variant: "default" as const, className: "bg-green-500 text-white", label: "Hadir" },
-      "Izin": { variant: "secondary" as const, className: "bg-blue-500 text-white", label: "Izin" },
-      "Tidak Hadir": { variant: "secondary" as const, className: "bg-yellow-500 text-white", label: "Sakit" },
-      "Alpha": { variant: "destructive" as const, className: "bg-red-500 text-white", label: "Alpha" },
+      "hadir": { variant: "default" as const, className: "bg-primary text-white", label: "Hadir" },
+      "izin": { variant: "secondary" as const, className: "bg-blue-500 text-white", label: "Izin" },
+      "sakit": { variant: "secondary" as const, className: "bg-yellow-500 text-white", label: "Sakit" },
+      "alpha": { variant: "destructive" as const, className: "bg-red-500 text-white", label: "Alpha" },
+      "tidak hadir": { variant: "destructive" as const, className: "bg-red-500 text-white", label: "Alpha" },
     }
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.Alpha
+    
+    // Cari config berdasarkan lowercase
+    const config = statusConfig[normalizedStatus.toLowerCase() as keyof typeof statusConfig]
+    
+    // Log untuk debugging
+    console.log(`Status badge - Input: "${status}", Normalized: "${normalizedStatus}", Found config:`, !!config)
+    
+    if (!config) {
+      console.warn(`Unknown status: "${status}", showing as is`)
+      return (
+        <Badge variant="secondary" className="bg-gray-400 text-white">
+          {status}
+        </Badge>
+      )
+    }
+    
     return (
       <Badge variant={config.variant} className={config.className}>
         {config.label}
@@ -127,7 +186,13 @@ export function KelompokRondaInfo({ className, userRole = "petugas" }: KelompokR
   const formatTime = (dateString?: string) => {
     if (!dateString) return "-"
     try {
-      return format(new Date(dateString), "HH:mm", { locale: id })
+      // MySQL DATETIME format: "2025-11-05 10:35:30"
+      // Kita hanya perlu ekstrak jam:menit
+      const match = dateString.match(/(\d{2}):(\d{2})/)
+      if (match) {
+        return `${match[1]}:${match[2]}`
+      }
+      return "-"
     } catch {
       return "-"
     }
@@ -213,9 +278,9 @@ export function KelompokRondaInfo({ className, userRole = "petugas" }: KelompokR
           <CardContent>
             {/* Summary Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{group.hadirCount}</div>
-                <div className="text-sm text-green-700">Hadir</div>
+              <div className="text-center p-3 bg-primary/10 rounded-lg">
+                <div className="text-2xl font-bold text-primary">{group.hadirCount}</div>
+                <div className="text-sm text-primary">Hadir</div>
               </div>
               <div className="text-center p-3 bg-blue-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-600">{group.izinCount}</div>
@@ -244,28 +309,30 @@ export function KelompokRondaInfo({ className, userRole = "petugas" }: KelompokR
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {group.members.map((member, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-medium">{member.namaLengkap}</TableCell>
-                        {userRole !== "warga" && (
-                          <TableCell className="text-sm text-muted-foreground">
-                            {member.jabatan || "-"}
-                          </TableCell>
-                        )}
-                        <TableCell>{getStatusBadge(member.status)}</TableCell>
-                        {userRole !== "warga" && (
-                          <TableCell className="text-center font-mono text-sm">
-                            {formatTime(member.check_in)}
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
+                    {group.members
+                      .filter(m => m.status && m.status.trim() !== '') // Hanya tampilkan yang sudah diabsen
+                      .map((member, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-medium">{member.namaLengkap}</TableCell>
+                          {userRole !== "warga" && (
+                            <TableCell className="text-sm text-muted-foreground">
+                              {member.jabatan || "-"}
+                            </TableCell>
+                          )}
+                          <TableCell>{getStatusBadge(member.status)}</TableCell>
+                          {userRole !== "warga" && (
+                            <TableCell className="text-center font-mono text-sm">
+                              {formatTime(member.check_in)}
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
                   </TableBody>
                 </Table>
               </div>
             )}
 
-            {showMembers && (!group.members || group.members.length === 0) && (
+            {showMembers && (!group.members || group.members.filter(m => m.status).length === 0) && (
               <div className="text-center py-8 text-muted-foreground">
                 Tidak ada data anggota untuk kelompok ini
               </div>

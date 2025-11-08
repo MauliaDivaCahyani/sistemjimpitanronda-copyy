@@ -58,7 +58,7 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
     <div className="flex h-screen bg-background">
       <Sidebar user={user} onLogout={handleLogout} onRoleSwitch={handleRoleSwitch} />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header title={title} subtitle={subtitle} onOpenMenu={() => setMobileOpen(true)} />
+        <Header title={title} subtitle={subtitle} onOpenMenu={() => setMobileOpen(true)} userRole={user.role} />
         <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
       </div>
 

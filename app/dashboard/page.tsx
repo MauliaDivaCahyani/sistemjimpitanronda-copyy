@@ -5,7 +5,7 @@ import { WargaDashboard } from "@/components/dashboard/warga-dashboard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Users, Building2, Wallet, TrendingUp, Clock, QrCode, Receipt } from "lucide-react"
+import { Users, Building2, Wallet, TrendingUp, Clock, QrCode, Receipt, RefreshCw } from "lucide-react"
 import { getAllKelompokRonda } from "@/lib/database"
 import type { User } from "@/types/database"
 
@@ -20,9 +20,10 @@ interface DashboardStats {
 
 const getGreeting = () => {
   const hour = new Date().getHours()
-  if (hour < 12) return "Selamat pagi"
-  if (hour < 18) return "Selamat sore"
-  return "Selamat malam"
+  if (hour < 12) return "Selamat Pagi"
+  if (hour < 15) return "Selamat Siang"
+  if (hour < 18) return "Selamat Sore"
+  return "Selamat Malam"
 }
 
 const getDayName = (date: Date) => {
@@ -32,6 +33,7 @@ const getDayName = (date: Date) => {
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
+  const [greeting, setGreeting] = useState<string>(() => getGreeting())
   const [stats, setStats] = useState<DashboardStats>({
     totalWarga: 0,
     totalRumah: 0,
@@ -42,23 +44,217 @@ export default function DashboardPage() {
   })
   const [kelompokRondaList, setKelompokRondaList] = useState<any[]>([])
   const [userKelompok, setUserKelompok] = useState<any>(null)
+  const [jadwalRonda, setJadwalRonda] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [userAbsensiStatus, setUserAbsensiStatus] = useState<string>('Belum Absen')
+  const [paymentStats, setPaymentStats] = useState<any>({
+    sudahBayar: 0,
+    belumBayar: 0,
+    persenSudahBayar: 0,
+    persenBelumBayar: 0
+  })
 
   useEffect(() => {
     const savedUser = localStorage.getItem("currentUser")
     if (savedUser) {
       setUser(JSON.parse(savedUser))
     }
+  }, [])
 
-    // Mock data - in real app, fetch from API
-    setStats({
-      totalWarga: 125,
-      totalRumah: 50,
-      totalDanaHariIni: 75000,
-      totalDanaBulanIni: 2250000,
-      absensiHariIni: 8,
-      transaksiHariIni: 25,
-    })
+  // Fetch dashboard stats untuk admin dan super_admin
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) return
+      
+      try {
+        const response = await fetch(`http://localhost:5006/api/dashboard/stats?_t=${Date.now()}`)
+        const data = await response.json()
+        
+        if (data.success) {
+          console.log('[DASHBOARD] Stats received:', data.data)
+          setStats({
+            totalWarga: data.data.totalWarga || 0,
+            totalRumah: data.data.totalRumah || 0,
+            totalDanaHariIni: data.data.totalDanaHariIni || 0,
+            totalDanaBulanIni: data.data.totalDanaBulanIni || 0,
+            absensiHariIni: 0,
+            transaksiHariIni: data.data.transaksiHariIni || 0,
+          })
+          
+          if (data.data.statistikPembayaran) {
+            setPaymentStats(data.data.statistikPembayaran)
+          }
+        }
+      } catch (error) {
+        console.error('[DASHBOARD] Error fetching stats:', error)
+      }
+    }
 
+    if (user && (user.role === 'admin' || user.role === 'super_admin')) {
+      fetchDashboardStats()
+      // Auto refresh setiap 30 detik
+      const interval = setInterval(fetchDashboardStats, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [user?.role])
+
+  // Fetch data untuk petugas
+  useEffect(() => {
+    const fetchPetugasData = async () => {
+      if (!user || user.role !== 'petugas') return
+      
+      setLoading(true)
+      try {
+        // Fetch data petugas berdasarkan username untuk mendapatkan kelompok
+        const petugasRes = await fetch(`http://localhost:5006/api/petugas?_t=${Date.now()}`)
+        const petugasData = await petugasRes.json()
+        
+        let currentPetugas = null
+        
+        if (petugasData.success && Array.isArray(petugasData.data)) {
+          currentPetugas = petugasData.data.find((p: any) => p.username === user.username)
+          console.log('Current Petugas:', currentPetugas)
+          
+          if (currentPetugas) {
+            // Update user data dengan info kelompok
+            const updatedUser = {
+              ...user,
+              idKelompokRonda: currentPetugas.kelompokId,
+              id_warga: currentPetugas.id_warga,
+              namaKelompok: currentPetugas.namaKelompok,
+              jadwalHari: currentPetugas.jadwalHari
+            }
+            setUser(updatedUser)
+          }
+        }
+        
+        // Fetch transaksi hari ini
+        const today = new Date().toISOString().split('T')[0]
+        const tomorrow = new Date()
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        const tomorrowStr = tomorrow.toISOString().split('T')[0]
+        
+        console.log('=== DATE DEBUG ===')
+        console.log('Today:', today)
+        console.log('Tomorrow:', tomorrowStr)
+        
+        const transaksiRes = await fetch(`http://localhost:5006/api/transaksi?tanggal=${today}&_t=${Date.now()}`)
+        const transaksiData = await transaksiRes.json()
+        
+        // Fetch absensi petugas hari ini - tambahkan cache buster
+        const absensiUrl = `http://localhost:5006/api/presensi?startDate=${today}&endDate=${tomorrowStr}&_t=${Date.now()}`
+        console.log('Fetching absensi from:', absensiUrl)
+        
+        const absensiRes = await fetch(absensiUrl)
+        const absensiData = await absensiRes.json()
+        
+        console.log('=== DASHBOARD DEBUG ===')
+        console.log('User:', user)
+        console.log('Current Petugas:', currentPetugas)
+        console.log('Absensi data from API:', absensiData)
+        
+        if (transaksiData.success && Array.isArray(transaksiData.data)) {
+          console.log('Transaksi hari ini:', transaksiData.data)
+          const totalDana = transaksiData.data.reduce((sum: number, t: any) => {
+            const nominal = parseFloat(t.nominal) || 0
+            console.log(`Transaksi ID ${t.id}: Rp ${nominal}`)
+            return sum + nominal
+          }, 0)
+          console.log('Total Dana Hari Ini:', totalDana)
+          
+          setStats(prev => ({
+            ...prev,
+            transaksiHariIni: transaksiData.data.length,
+            totalDanaHariIni: totalDana
+          }))
+        }
+        
+        if (absensiData.success && Array.isArray(absensiData.data)) {
+          console.log('=== ABSENSI DATA CHECK ===')
+          console.log('Total absensi records:', absensiData.data.length)
+          console.log('All absensi records:', absensiData.data)
+          
+          // Cek status absensi user saat ini - GUNAKAN currentPetugas langsung
+          let userAbsensi = null
+          
+          // PERBAIKAN: Gunakan currentPetugas.id_warga sebagai prioritas utama
+          if (currentPetugas?.id_warga) {
+            console.log(`\nSearching absensi for petugas:`)
+            console.log(`  - Username: ${currentPetugas.username}`)
+            console.log(`  - Nama: ${currentPetugas.namaLengkap}`)
+            console.log(`  - id_warga: ${currentPetugas.id_warga}`)
+            console.log(`  - Type: ${typeof currentPetugas.id_warga}`)
+            
+            console.log(`\nChecking each absensi record:`)
+            absensiData.data.forEach((a: any, index: number) => {
+              console.log(`  [${index}] id_warga: ${a.id_warga} (${typeof a.id_warga}), status: ${a.status}`)
+            })
+            
+            userAbsensi = absensiData.data.find((a: any) => {
+              const match = Number(a.id_warga) === Number(currentPetugas.id_warga)
+              if (match) {
+                console.log(`\n✅ MATCH FOUND!`)
+                console.log(`  - Absensi id_warga: ${a.id_warga}`)
+                console.log(`  - Petugas id_warga: ${currentPetugas.id_warga}`)
+                console.log(`  - Status: ${a.status}`)
+              }
+              return match
+            })
+          } else {
+            console.log('❌ currentPetugas atau id_warga tidak tersedia')
+            console.log('currentPetugas:', currentPetugas)
+          }
+          
+          console.log('\n=== RESULT ===')
+          console.log('User absensi found:', userAbsensi)
+          
+          if (userAbsensi) {
+            // Normalisasi status (capitalize first letter)
+            const status = String(userAbsensi.status || 'Belum Absen')
+            const normalizedStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
+            console.log(`Setting status to: ${normalizedStatus}`)
+            setUserAbsensiStatus(normalizedStatus)
+          } else {
+            console.log('No absensi found, setting to: Belum Absen')
+            setUserAbsensiStatus('Belum Absen')
+          }
+          
+          // Hitung jumlah petugas hadir (case-insensitive)
+          const hadirCount = absensiData.data.filter((a: any) => {
+            const statusLower = String(a.status || '').toLowerCase()
+            return statusLower === 'hadir'
+          }).length
+          
+          console.log(`Total petugas hadir: ${hadirCount}`)
+          console.log('===================\n')
+          
+          setStats(prev => ({
+            ...prev,
+            absensiHariIni: hadirCount
+          }))
+        } else {
+          console.log('❌ Absensi data tidak valid atau kosong')
+          console.log('absensiData:', absensiData)
+        }
+        
+      } catch (error) {
+        console.error('Error fetching petugas data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (user?.username) {
+      fetchPetugasData()
+      
+      // Auto refresh setiap 10 detik untuk update data lebih cepat
+      const interval = setInterval(fetchPetugasData, 10000)
+      return () => clearInterval(interval)
+    }
+  }, [user?.username]) // Hanya re-run ketika username berubah
+
+  // Fetch kelompok ronda untuk semua user
+  useEffect(() => {
     const fetchKelompokRonda = async () => {
       try {
         const data = await getAllKelompokRonda()
@@ -71,12 +267,56 @@ export default function DashboardPage() {
     fetchKelompokRonda()
   }, [])
 
+  // Update greeting setiap menit agar tetap akurat dengan waktu
   useEffect(() => {
-    if (user && (user as any).idKelompokRonda && kelompokRondaList.length > 0) {
-      const kelompok = kelompokRondaList.find((k) => k.id === (user as any).idKelompokRonda)
-      setUserKelompok(kelompok)
+    const updateGreeting = () => setGreeting(getGreeting())
+    updateGreeting()
+    const interval = setInterval(updateGreeting, 60 * 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    if (user && (user as any).jadwalHari) {
+      // Parse jadwal dari user data (sudah diupdate dari petugas)
+      const parseJadwal = (jadwalHari: string) => {
+        const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
+        const schedule: any[] = []
+        
+        if (jadwalHari.includes(' - ')) {
+          // Format range: "Senin - Jumat"
+          const [start, end] = jadwalHari.split(' - ').map(d => d.trim())
+          const startIdx = days.indexOf(start)
+          const endIdx = days.indexOf(end)
+          
+          if (startIdx !== -1 && endIdx !== -1) {
+            if (startIdx <= endIdx) {
+              for (let i = startIdx; i <= endIdx; i++) {
+                schedule.push({ day: days[i], time: '19:00-06:00' })
+              }
+            } else {
+              // Wrap around (e.g., Sabtu - Senin)
+              for (let i = startIdx; i < days.length; i++) {
+                schedule.push({ day: days[i], time: '19:00-06:00' })
+              }
+              for (let i = 0; i <= endIdx; i++) {
+                schedule.push({ day: days[i], time: '19:00-06:00' })
+              }
+            }
+          }
+        } else {
+          // Single day
+          const day = jadwalHari.trim()
+          if (days.includes(day)) {
+            schedule.push({ day, time: '19:00-06:00' })
+          }
+        }
+        
+        return schedule
+      }
+      
+      setJadwalRonda(parseJadwal((user as any).jadwalHari))
     }
-  }, [user, kelompokRondaList])
+  }, [user])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -84,6 +324,11 @@ export default function DashboardPage() {
       currency: "IDR",
       minimumFractionDigits: 0,
     }).format(amount)
+  }
+
+  const handleManualRefresh = () => {
+    // Trigger re-fetch dengan reload halaman
+    window.location.reload()
   }
 
   const getPaymentStatus = (paid: number, target: number) => {
@@ -114,7 +359,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Transaksi Hari Ini</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.transaksiHariIni}</div>
@@ -139,8 +384,8 @@ export default function DashboardPage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Hadir</div>
-            <p className="text-xs text-muted-foreground">Shift malam</p>
+            <div className="text-2xl font-bold">{userAbsensiStatus}</div>
+            <p className="text-xs text-muted-foreground">{stats.absensiHariIni} petugas hadir hari ini</p>
           </CardContent>
         </Card>
 
@@ -166,13 +411,16 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {userKelompok ? (
+            {(user as any)?.namaKelompok ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">{userKelompok.namaKelompok}</span>
-                  <Badge className="bg-emerald-500">Aktif</Badge>
+                  <span className="font-medium">{(user as any).namaKelompok}</span>
+                  <Badge className="bg-primary">Aktif</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">{userKelompok.keteranganKelompok}</p>
+                <div className="text-sm text-muted-foreground">
+                  <p className="font-medium">Jadwal: {(user as any).jadwalHari || '-'}</p>
+                  <p className="mt-1">Waktu: 19:00 - 06:00</p>
+                </div>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">Anda tidak terdaftar dalam kelompok ronda manapun</p>
@@ -183,17 +431,27 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Jadwal Ronda</CardTitle>
-            <CardDescription>Jadwal ronda minggu ini</CardDescription>
+            <CardDescription>Jadwal ronda {(user as any)?.namaKelompok || 'Anda'}</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {["Senin", "Selasa", "Rabu", "Kamis", "Jumat"].map((day, i) => (
-                <div key={day} className="flex items-center justify-between">
-                  <span>{day}</span>
-                  <Badge variant={i === 2 ? "default" : "secondary"}>{i === 2 ? "Hari Ini" : "19:00-06:00"}</Badge>
-                </div>
-              ))}
-            </div>
+            {jadwalRonda.length > 0 ? (
+              <div className="space-y-2">
+                {jadwalRonda.map((schedule, i) => {
+                  const currentDay = getDayName(new Date())
+                  const isToday = schedule.day === currentDay
+                  return (
+                    <div key={i} className="flex items-center justify-between">
+                      <span className={isToday ? "font-medium" : ""}>{schedule.day}</span>
+                      <Badge variant={isToday ? "default" : "secondary"}>
+                        {isToday ? "Hari Ini" : schedule.time}
+                      </Badge>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Tidak ada jadwal ronda</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -259,19 +517,27 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <span>Sudah Bayar</span>
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-20 bg-green-200 rounded-full">
-                    <div className="h-2 w-16 bg-green-500 rounded-full"></div>
+                  <div className="h-2 w-20 bg-primary/30 rounded-full">
+                    <div 
+                      className="h-2 bg-primary rounded-full" 
+                      style={{ width: `${paymentStats.persenSudahBayar}%` }}
+                    ></div>
                   </div>
-                  <span className="text-sm">80%</span>
+                  <span className="text-sm">{paymentStats.persenSudahBayar}%</span>
+                  <span className="text-xs text-muted-foreground">({paymentStats.sudahBayar} warga)</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span>Belum Bayar</span>
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-20 bg-red-200 rounded-full">
-                    <div className="h-2 w-4 bg-red-500 rounded-full"></div>
+                    <div 
+                      className="h-2 bg-red-500 rounded-full" 
+                      style={{ width: `${paymentStats.persenBelumBayar}%` }}
+                    ></div>
                   </div>
-                  <span className="text-sm">20%</span>
+                  <span className="text-sm">{paymentStats.persenBelumBayar}%</span>
+                  <span className="text-xs text-muted-foreground">({paymentStats.belumBayar} warga)</span>
                 </div>
               </div>
             </div>
@@ -297,8 +563,17 @@ export default function DashboardPage() {
     }
   }
 
+  // Fungsi untuk mendapatkan nama user dengan prioritas yang benar
+  const getUserName = () => {
+    if (!user) return "User"
+    return (user as any).nama || user.namaLengkap || (user as any).name || user.username || "User"
+  }
+
   return (
-    <DashboardLayout title="Dashboard" subtitle={`${getGreeting()}, ${user?.namaLengkap || user?.username || "User"}`}>
+    <DashboardLayout 
+      title="Dashboard" 
+      subtitle={`${greeting}, ${getUserName()}`}
+    >
       {renderDashboardContent()}
     </DashboardLayout>
   )

@@ -50,30 +50,49 @@ export const getKelompokRondaInfo = async (req, res) => {
     console.log('Today date:', todayStr)
     console.log('Yesterday date:', yesterdayStr)
 
-    // Helper function untuk mendapatkan kelompok yang memiliki data absensi
-    const getGroupsWithAbsensi = async (dateStr) => {
+    // Helper function untuk mendapatkan kelompok yang terjadwal (baik sudah ada absensi atau belum)
+    const getGroupsWithAbsensi = async (dateStr, targetDate) => {
+      // Ambil semua kelompok ronda beserta data absensi TERBARU per petugas
       const [groups] = await pool.query(`
         SELECT 
           kr.id_kelompok_ronda AS id,
           kr.nama_kelompok AS namaKelompok,
           kr.jadwal_hari AS jadwalHari,
           COUNT(DISTINCT p.id_petugas) AS totalAnggota,
-          COUNT(DISTINCT CASE WHEN pr.status = 'Hadir' THEN pr.id_warga END) AS hadirCount,
-          COUNT(DISTINCT CASE WHEN pr.status = 'Izin' THEN pr.id_warga END) AS izinCount,
-          COUNT(DISTINCT CASE WHEN pr.status = 'Tidak Hadir' THEN pr.id_warga END) AS sakitCount,
-          (COUNT(DISTINCT p.id_petugas) - COUNT(DISTINCT pr.id_warga)) AS alphaCount
+          COUNT(DISTINCT CASE WHEN LOWER(latest_pr.status) = 'hadir' THEN latest_pr.id_warga END) AS hadirCount,
+          COUNT(DISTINCT CASE WHEN LOWER(latest_pr.status) = 'izin' THEN latest_pr.id_warga END) AS izinCount,
+          COUNT(DISTINCT CASE WHEN LOWER(latest_pr.status) = 'sakit' THEN latest_pr.id_warga END) AS sakitCount,
+          COUNT(DISTINCT CASE WHEN LOWER(latest_pr.status) IN ('alpha', 'tidak hadir') THEN latest_pr.id_warga END) AS alphaCount
         FROM kelompok_ronda kr
-        INNER JOIN petugas p ON kr.id_kelompok_ronda = p.id_kelompok_ronda AND p.status = 'Aktif'
-        INNER JOIN presensi pr ON p.id_warga = pr.id_warga AND DATE(pr.tanggal) = ?
+        LEFT JOIN petugas p ON kr.id_kelompok_ronda = p.id_kelompok_ronda AND p.status = 'Aktif'
+        LEFT JOIN (
+          SELECT pr1.*
+          FROM presensi pr1
+          INNER JOIN (
+            SELECT id_warga, MAX(created_at) as max_created
+            FROM presensi
+            WHERE DATE(tanggal) = ?
+            GROUP BY id_warga
+          ) pr2 ON pr1.id_warga = pr2.id_warga AND pr1.created_at = pr2.max_created
+          WHERE DATE(pr1.tanggal) = ?
+        ) latest_pr ON p.id_warga = latest_pr.id_warga
         GROUP BY kr.id_kelompok_ronda, kr.nama_kelompok, kr.jadwal_hari
-        HAVING COUNT(pr.id_presensi) > 0
         ORDER BY kr.nama_kelompok
-      `, [dateStr])
+      `, [dateStr, dateStr])
       
-      return groups
+      // Filter hanya kelompok yang sesuai jadwal hari ini/kemarin
+      const filteredGroups = groups.filter(group => isScheduledForDate(group.jadwalHari, targetDate))
+      
+      console.log(`=== Groups scheduled for ${dateStr} ===`)
+      filteredGroups.forEach(g => {
+        console.log(`${g.namaKelompok}: Total=${g.totalAnggota}, Hadir=${g.hadirCount}, Izin=${g.izinCount}, Sakit=${g.sakitCount}, Alpha=${g.alphaCount}`)
+      })
+      
+      return filteredGroups
     }
 
-    // Helper function untuk mendapatkan detail anggota yang ada absensi
+    // Helper function untuk mendapatkan detail anggota (baik sudah ada absensi atau belum)
+    // Hanya ambil data absensi TERBARU per petugas per hari
     const getGroupMembers = async (dateStr) => {
       const [members] = await pool.query(`
         SELECT DISTINCT
@@ -81,25 +100,50 @@ export const getKelompokRondaInfo = async (req, res) => {
           kr.nama_kelompok AS namaKelompok,
           w.nama_lengkap AS namaLengkap,
           p.jabatan,
-          pr.status,
-          pr.check_in,
-          pr.check_out,
-          pr.keterangan
+          latest_pr.status AS status,
+          DATE_FORMAT(latest_pr.check_in, '%Y-%m-%d %H:%i:%s') AS check_in,
+          DATE_FORMAT(latest_pr.check_out, '%Y-%m-%d %H:%i:%s') AS check_out,
+          latest_pr.keterangan,
+          p.id_warga
         FROM kelompok_ronda kr
         INNER JOIN petugas p ON kr.id_kelompok_ronda = p.id_kelompok_ronda AND p.status = 'Aktif'
         INNER JOIN warga w ON p.id_warga = w.id_warga
-        INNER JOIN presensi pr ON p.id_warga = pr.id_warga AND DATE(pr.tanggal) = ?
-        GROUP BY kr.id_kelompok_ronda, w.nama_lengkap, pr.status
+        INNER JOIN (
+          SELECT 
+            pr1.id_warga,
+            pr1.status,
+            pr1.tanggal,
+            pr1.check_in,
+            pr1.check_out,
+            pr1.keterangan,
+            pr1.created_at
+          FROM presensi pr1
+          INNER JOIN (
+            SELECT id_warga, MAX(created_at) as max_created
+            FROM presensi
+            WHERE DATE(tanggal) = ?
+            GROUP BY id_warga
+          ) pr2 ON pr1.id_warga = pr2.id_warga 
+               AND pr1.created_at = pr2.max_created
+               AND DATE(pr1.tanggal) = ?
+        ) latest_pr ON p.id_warga = latest_pr.id_warga
         ORDER BY kr.nama_kelompok, w.nama_lengkap
-      `, [dateStr])
+      `, [dateStr, dateStr])
+      
+      console.log(`=== Members for ${dateStr} ===`)
+      console.log('Total members fetched:', members.length)
+      console.log('Members with all statuses:')
+      members.forEach(m => {
+        console.log(`  - ${m.namaLengkap}: status="${m.status}" (${typeof m.status}), kelompok=${m.namaKelompok}`)
+      })
       
       return members
     }
 
     // Ambil data absensi untuk hari ini dan kemarin
     const [todayGroups, yesterdayGroups, todayMembers, yesterdayMembers] = await Promise.all([
-      getGroupsWithAbsensi(todayStr),
-      getGroupsWithAbsensi(yesterdayStr),
+      getGroupsWithAbsensi(todayStr, today),
+      getGroupsWithAbsensi(yesterdayStr, yesterday),
       getGroupMembers(todayStr),
       getGroupMembers(yesterdayStr)
     ])
@@ -109,18 +153,39 @@ export const getKelompokRondaInfo = async (req, res) => {
     console.log('Yesterday groups with absensi:', yesterdayGroups)
     console.log('Yesterday members with absensi:', yesterdayMembers.length, 'records')
 
+    // Log detail status untuk debugging
+    console.log('\n=== TODAY MEMBERS DETAIL ===')
+    todayMembers.forEach(m => {
+      console.log(`${m.namaLengkap}: "${m.status}" (kelompok: ${m.namaKelompok})`)
+    })
+
+    // Filter members hanya untuk kelompok yang terjadwal
+    const todayGroupIds = todayGroups.map(g => g.id)
+    const yesterdayGroupIds = yesterdayGroups.map(g => g.id)
+    
+    const filteredTodayMembers = todayMembers.filter(m => todayGroupIds.includes(m.kelompokId))
+    const filteredYesterdayMembers = yesterdayMembers.filter(m => yesterdayGroupIds.includes(m.kelompokId))
+
+    console.log('\n=== AFTER FILTERING BY SCHEDULED GROUPS ===')
+    console.log(`Today: ${filteredTodayMembers.length} members (from ${todayMembers.length} total)`)
+    console.log(`Yesterday: ${filteredYesterdayMembers.length} members (from ${yesterdayMembers.length} total)`)
+    
+    filteredTodayMembers.forEach(m => {
+      console.log(`  ✓ ${m.namaLengkap}: "${m.status}"`)
+    })
+
     res.json({
       success: true,
       data: {
         today: {
           date: todayStr,
           groups: todayGroups,
-          members: todayMembers
+          members: filteredTodayMembers
         },
         yesterday: {
           date: yesterdayStr,
           groups: yesterdayGroups,
-          members: yesterdayMembers
+          members: filteredYesterdayMembers
         }
       }
     })
@@ -152,17 +217,27 @@ export const getPartisipasiKelompok = async (req, res) => {
         kr.nama_kelompok AS namaKelompok,
         w.nama_lengkap AS namaLengkap,
         p.jabatan,
-        COALESCE(pr.status, 'Alpha') AS status,
-        pr.check_in,
-        pr.check_out,
-        pr.keterangan
+        latest_pr.status AS status,
+        DATE_FORMAT(latest_pr.check_in, '%Y-%m-%d %H:%i:%s') AS check_in,
+        DATE_FORMAT(latest_pr.check_out, '%Y-%m-%d %H:%i:%s') AS check_out,
+        latest_pr.keterangan
       FROM kelompok_ronda kr
       LEFT JOIN petugas p ON kr.id_kelompok_ronda = p.id_kelompok_ronda AND p.status = 'Aktif'
       LEFT JOIN warga w ON p.id_warga = w.id_warga
-      LEFT JOIN presensi pr ON p.id_warga = pr.id_warga AND DATE(pr.tanggal) = ?
+      LEFT JOIN (
+        SELECT pr1.*
+        FROM presensi pr1
+        INNER JOIN (
+          SELECT id_warga, MAX(created_at) as max_created
+          FROM presensi
+          WHERE DATE(tanggal) = ?
+          GROUP BY id_warga
+        ) pr2 ON pr1.id_warga = pr2.id_warga AND pr1.created_at = pr2.max_created
+        WHERE DATE(pr1.tanggal) = ?
+      ) latest_pr ON p.id_warga = latest_pr.id_warga
       WHERE w.nama_lengkap IS NOT NULL
       ORDER BY kr.nama_kelompok, w.nama_lengkap
-    `, [tanggal])
+    `, [tanggal, tanggal])
 
     // Group by kelompok
     const groupedData = members.reduce((acc, member) => {

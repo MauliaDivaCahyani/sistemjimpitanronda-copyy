@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/hooks/use-toast"
 import {
   User,
   Bell,
@@ -23,18 +24,32 @@ import {
   EyeOff,
   Save,
   RefreshCw,
+  Check,
 } from "lucide-react"
 import type { User as UserType } from "@/types/auth"
 import { useSearchParams } from "next/navigation"
 
+const API_URL = "http://localhost:5006/api"
+
+// Daftar tema warna yang tersedia
+const themes = [
+  { id: "green", name: "Hijau", color: "#4caf50" },
+  { id: "blue", name: "Biru", color: "#2196f3" },
+  { id: "purple", name: "Ungu", color: "#9c27b0" },
+]
+
 export default function SettingsPage() {
+  const { toast } = useToast()
   const [user, setUser] = useState<UserType | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [currentTheme, setCurrentTheme] = useState("green")
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [pushNotifications, setPushNotifications] = useState(true)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   const searchParams = useSearchParams()
@@ -60,62 +75,239 @@ export default function SettingsPage() {
       setProfileForm({
         nama: parsedUser.nama || "",
         email: parsedUser.email || "",
-        phone: parsedUser.phone || "",
+        phone: parsedUser.nomorHp || "",
         alamat: parsedUser.alamat || "",
       })
+
+      // Load tema yang disimpan PER USER - DENGAN VALIDASI
+      // Gunakan user.id yang pasti ada (bukan userId)
+      const userId = parsedUser.id
+      const userThemeKey = `appTheme_user_${userId}`
+      const savedTheme = localStorage.getItem(userThemeKey)
+      const validTheme = savedTheme && themes.find(t => t.id === savedTheme) ? savedTheme : "green"
+      console.log("🎨 Loading saved theme for user", userId, "(", parsedUser.nama, "):", { savedTheme, validTheme, key: userThemeKey })
+      setCurrentTheme(validTheme)
+      applyTheme(validTheme)
+
+      // Load dark mode PER USER - DENGAN VALIDASI
+      const userDarkModeKey = `darkMode_user_${userId}`
+      const savedDarkMode = localStorage.getItem(userDarkModeKey)
+      const isDark = savedDarkMode === "true"
+      console.log("🌙 Loading dark mode for user", userId, "(", parsedUser.nama, "):", { savedDarkMode, isDark, key: userDarkModeKey })
+      setIsDarkMode(isDark)
+      if (isDark) {
+        document.documentElement.classList.add("dark")
+      } else {
+        document.documentElement.classList.remove("dark")
+      }
     }
 
-    const savedTheme = localStorage.getItem("theme")
-    const isDark = savedTheme === "dark"
-    setIsDarkMode(isDark)
-
+    // Load notification preferences
     const savedNotifications = localStorage.getItem("notifications")
     if (savedNotifications) {
-      const prefs = JSON.parse(savedNotifications)
-      setNotificationsEnabled(prefs.enabled ?? true)
-      setEmailNotifications(prefs.email ?? true)
-      setPushNotifications(prefs.push ?? true)
+      try {
+        const prefs = JSON.parse(savedNotifications)
+        setNotificationsEnabled(prefs.enabled ?? true)
+        setEmailNotifications(prefs.email ?? true)
+        setPushNotifications(prefs.push ?? true)
+      } catch (error) {
+        console.error("Error loading notification preferences:", error)
+      }
     }
 
     const savedSound = localStorage.getItem("soundEnabled")
-    setSoundEnabled(savedSound !== "false")
+    setSoundEnabled(savedSound === "true" || savedSound === null)
   }, [])
+
+  const applyTheme = (themeId: string) => {
+    console.log("🎨 Applying theme:", themeId)
+    document.documentElement.setAttribute("data-theme", themeId)
+    
+    // Apply CSS variables untuk tema
+    const theme = themes.find(t => t.id === themeId)
+    if (theme) {
+      document.documentElement.style.setProperty("--theme-color", theme.color)
+    }
+  }
+
+  const handleThemeChange = (themeId: string) => {
+    console.log("🎨 Changing theme to:", themeId)
+    setCurrentTheme(themeId)
+    
+    // Simpan tema PER USER - gunakan user.id yang pasti ada
+    if (user) {
+      const userId = user.id
+      const userThemeKey = `appTheme_user_${userId}`
+      localStorage.setItem(userThemeKey, themeId)
+      console.log("🎨 Theme saved for user", userId, "(", user.nama, "):", themeId, "Key:", userThemeKey)
+    }
+    
+    applyTheme(themeId)
+    
+    toast({
+      title: "Tema Berhasil Diubah",
+      description: `Tema ${themes.find((t) => t.id === themeId)?.name} telah diterapkan dan disimpan.`,
+    })
+  }
 
   const handleThemeToggle = () => {
     const newTheme = !isDarkMode
+    console.log("🌙 Toggling dark mode:", { from: isDarkMode, to: newTheme })
     setIsDarkMode(newTheme)
-    localStorage.setItem("theme", newTheme ? "dark" : "light")
-    document.documentElement.classList.toggle("dark", newTheme)
+    
+    // Simpan dark mode PER USER - gunakan user.id yang pasti ada
+    if (user) {
+      const userId = user.id
+      const userDarkModeKey = `darkMode_user_${userId}`
+      localStorage.setItem(userDarkModeKey, newTheme.toString())
+      console.log("🌙 Dark mode saved for user", userId, "(", user.nama, "):", newTheme, "Key:", userDarkModeKey)
+    }
+    
+    if (newTheme) {
+      document.documentElement.classList.add("dark")
+    } else {
+      document.documentElement.classList.remove("dark")
+    }
+    
+    toast({
+      title: newTheme ? "Mode Gelap Diaktifkan" : "Mode Terang Diaktifkan",
+      description: `Tampilan telah diubah ke mode ${newTheme ? "gelap" : "terang"} dan disimpan.`,
+    })
   }
 
   const handleSaveProfile = async () => {
-    setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    if (!user) return
 
-    if (user) {
-      const updatedUser = { ...user, ...profileForm }
-      localStorage.setItem("currentUser", JSON.stringify(updatedUser))
-      setUser(updatedUser)
+    try {
+      setIsLoading(true)
+
+      const response = await fetch(`${API_URL}/user/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: user.id,
+          role: user.role,
+          nama: profileForm.nama,
+          email: profileForm.email,
+          phone: profileForm.phone,
+          alamat: profileForm.alamat,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        const updatedUser = { ...user, ...profileForm, nomorHp: profileForm.phone }
+        localStorage.setItem("currentUser", JSON.stringify(updatedUser))
+        setUser(updatedUser)
+
+        toast({
+          title: "Profil Berhasil Diperbarui",
+          description: "Data profil Anda telah disimpan.",
+        })
+      } else {
+        throw new Error(data.message)
+      }
+    } catch (error) {
+      toast({
+        title: "Gagal Memperbarui Profil",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }
 
   const handleSavePassword = async () => {
+    if (!user) return
+
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert("Password baru tidak cocok!")
+      toast({
+        title: "Password Tidak Cocok",
+        description: "Password baru dan konfirmasi password harus sama.",
+        variant: "destructive",
+      })
       return
     }
 
-    setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    if (passwordForm.newPassword.length < 4) {
+      toast({
+        title: "Password Terlalu Pendek",
+        description: "Password minimal 4 karakter.",
+        variant: "destructive",
+      })
+      return
+    }
 
-    setPasswordForm({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    })
-    setIsLoading(false)
-    alert("Password berhasil diubah!")
+    try {
+      setIsLoading(true)
+
+      // Tentukan endpoint berdasarkan role
+      // Role warga menggunakan endpoint warga, role lainnya (petugas, admin, superadmin) menggunakan endpoint petugas
+      const endpoint =
+        user.role === "warga"
+          ? `${API_URL}/user/warga/change-password`
+          : `${API_URL}/user/petugas/change-password`
+
+      // Tentukan request body berdasarkan role
+      const requestBody =
+        user.role === "warga"
+          ? {
+              id_warga: parseInt(user.id),
+              currentPassword: passwordForm.currentPassword,
+              newPassword: passwordForm.newPassword,
+            }
+          : {
+              id_petugas: parseInt(user.id),
+              currentPassword: passwordForm.currentPassword,
+              newPassword: passwordForm.newPassword,
+            }
+
+      console.log("Change password request:", {
+        role: user.role,
+        endpoint,
+        requestBody: { ...requestBody, currentPassword: "***", newPassword: "***" }
+      })
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      const data = await response.json()
+
+      console.log("Change password response:", data)
+
+      if (data.success) {
+        setPasswordForm({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        })
+
+        toast({
+          title: "Password Berhasil Diubah",
+          description: "Password Anda telah diperbarui. Silakan login dengan password baru.",
+        })
+      } else {
+        throw new Error(data.message)
+      }
+    } catch (error) {
+      console.error("Error changing password:", error)
+      toast({
+        title: "Gagal Mengubah Password",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleSaveNotifications = () => {
@@ -126,6 +318,11 @@ export default function SettingsPage() {
     }
     localStorage.setItem("notifications", JSON.stringify(prefs))
     localStorage.setItem("soundEnabled", soundEnabled.toString())
+
+    toast({
+      title: "Pengaturan Notifikasi Disimpan",
+      description: "Preferensi notifikasi Anda telah diperbarui.",
+    })
   }
 
   return (
@@ -298,6 +495,7 @@ export default function SettingsPage() {
                         type={showPassword ? "text" : "password"}
                         value={passwordForm.currentPassword}
                         onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                        placeholder="Masukkan password saat ini"
                       />
                       <Button
                         type="button"
@@ -313,26 +511,54 @@ export default function SettingsPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="newPassword">Password Baru</Label>
-                    <Input
-                      id="newPassword"
-                      type="password"
-                      value={passwordForm.newPassword}
-                      onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="newPassword"
+                        type={showNewPassword ? "text" : "password"}
+                        value={passwordForm.newPassword}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                        placeholder="Masukkan password baru (min. 4 karakter)"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                      >
+                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">Konfirmasi Password Baru</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      value={passwordForm.confirmPassword}
-                      onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={passwordForm.confirmPassword}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                        placeholder="Ulangi password baru"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
-                <Button onClick={handleSavePassword} disabled={isLoading} className="w-full md:w-auto">
+                <Button 
+                  onClick={handleSavePassword} 
+                  disabled={isLoading || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword} 
+                  className="w-full md:w-auto"
+                >
                   {isLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
                   Ubah Password
                 </Button>
@@ -384,19 +610,29 @@ export default function SettingsPage() {
 
                 <div className="space-y-4">
                   <Label className="text-base">Tema Warna</Label>
+                  <p className="text-sm text-muted-foreground mb-3">Pilih warna tema yang Anda suka</p>
                   <div className="grid grid-cols-3 gap-3">
-                    <div className="p-3 border rounded-lg cursor-pointer hover:bg-accent">
-                      <div className="w-full h-8 bg-green-500 rounded mb-2"></div>
-                      <p className="text-sm font-medium">Hijau (Default)</p>
-                    </div>
-                    <div className="p-3 border rounded-lg cursor-pointer hover:bg-accent opacity-50">
-                      <div className="w-full h-8 bg-blue-500 rounded mb-2"></div>
-                      <p className="text-sm font-medium">Biru</p>
-                    </div>
-                    <div className="p-3 border rounded-lg cursor-pointer hover:bg-accent opacity-50">
-                      <div className="w-full h-8 bg-purple-500 rounded mb-2"></div>
-                      <p className="text-sm font-medium">Ungu</p>
-                    </div>
+                    {themes.map((theme) => (
+                      <div
+                        key={theme.id}
+                        onClick={() => handleThemeChange(theme.id)}
+                        className={`relative p-3 border-2 rounded-lg cursor-pointer transition-all hover:scale-105 ${
+                          currentTheme === theme.id ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <div
+                          className="w-full h-8 rounded mb-2"
+                          style={{ backgroundColor: theme.color }}
+                        ></div>
+                        <p className="text-sm font-medium text-center">{theme.name}</p>
+                        {currentTheme === theme.id && (
+                          <div className="flex items-center justify-center gap-1 text-xs text-primary mt-1">
+                            <Check className="h-3 w-3" />
+                            Aktif
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </CardContent>

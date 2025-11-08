@@ -37,7 +37,7 @@ import {
   getAnggotaByKelompokId,
 } from "@/lib/database"
 import { KelompokRondaInfo } from "@/components/ronda/kelompok-ronda-info"
-import type { KelompokRonda } from "@/types/database"
+import type { KelompokRonda, User } from "@/types/database"
 
 export default function KelompokRondaPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -53,6 +53,15 @@ export default function KelompokRondaPage() {
     keteranganKelompok: "",
   })
   const [kelompokRonda, setKelompokRonda] = useState<KelompokRonda[]>([])
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
+
+  useEffect(() => {
+    // Get current user from localStorage
+    const savedUser = localStorage.getItem("currentUser")
+    if (savedUser) {
+      setCurrentUser(JSON.parse(savedUser))
+    }
+  }, [])
 
   useEffect(() => {
     async function fetchKelompokRonda() {
@@ -159,14 +168,14 @@ export default function KelompokRondaPage() {
         </TabsList>
 
         <TabsContent value="info" className="space-y-6">
-          <KelompokRondaInfo userRole="petugas" />
+          <KelompokRondaInfo userRole={currentUser?.role || "admin"} />
         </TabsContent>
 
         <TabsContent value="manage" className="space-y-6">
           {/* Search + Add Button */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
                 placeholder="Cari kelompok ronda..."
                 value={searchTerm}
@@ -177,7 +186,7 @@ export default function KelompokRondaPage() {
 
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto">
+                <Button className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
                   <Plus className="h-4 w-4 mr-2" />
                   Tambah Kelompok
                 </Button>
@@ -238,16 +247,16 @@ export default function KelompokRondaPage() {
                     <div key={kelompok.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 mb-1">{kelompok.namaKelompok}</h3>
-                          <p className="text-sm text-gray-600 mb-2">{kelompok.keteranganKelompok}</p>
+                          <h3 className="font-semibold text-card-foreground mb-1">{kelompok.namaKelompok}</h3>
+                          <p className="text-sm text-muted-foreground mb-2">{kelompok.keteranganKelompok}</p>
                         </div>
-                        <Badge className="bg-emerald-100 text-emerald-700">Aktif</Badge>
+                        <Badge >Aktif</Badge>
                       </div>
 
                       <div className="space-y-2 mb-4">
                         <button
                           onClick={() => toggleMemberExpansion(kelompok.id)}
-                          className="w-full flex items-center justify-between text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                          className="w-full flex items-center justify-between text-sm text-muted-foreground hover:text-card-foreground transition-colors"
                         >
                           <div className="flex items-center">
                             <Users className="h-4 w-4 mr-2" />
@@ -261,12 +270,12 @@ export default function KelompokRondaPage() {
                             {members.length > 0 ? (
                               members.map((member, index) => (
                                 <div key={index} className="text-sm text-gray-700 flex items-center">
-                                  <span className="w-6 text-gray-400">{index + 1}.</span>
+                                  <span className="w-6 text-muted-foreground">{index + 1}.</span>
                                   <span>{member}</span>
                                 </div>
                               ))
                             ) : (
-                              <div className="text-sm text-gray-500 italic">Belum ada anggota</div>
+                              <div className="text-sm text-muted-foreground italic">Belum ada anggota</div>
                             )}
                           </div>
                         )}

@@ -215,7 +215,7 @@ export function TransactionList() {
               </CardTitle>
               <CardDescription>Filter transaksi berdasarkan tanggal, warga, atau jenis dana</CardDescription>
             </div>
-            <Button onClick={() => setIsManualFormOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={() => setIsManualFormOpen(true)} className="bg-primary hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />
               Transaksi
             </Button>
@@ -280,9 +280,6 @@ export function TransactionList() {
           </div>
 
           <div className="flex gap-2 mt-4">
-            <Button onClick={clearFilters} variant="outline" className="bg-transparent">
-              Clear Filters
-            </Button>
             <Button variant="outline" className="bg-transparent">
               <Download className="h-4 w-4 mr-2" />
               Export Excel
@@ -323,13 +320,13 @@ export function TransactionList() {
                     <TableCell>
                       <Badge
                         variant={t.status_jimpitan === "lunas" ? "default" : "secondary"}
-                        className={t.status_jimpitan === "lunas" ? "bg-green-500" : "bg-yellow-500"}
+                        className={t.status_jimpitan === "lunas" ? "bg-primary" : "bg-yellow-500"}
                       >
                         {t.status_jimpitan === "lunas" ? "Lunas" : "Belum Lunas"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {format(new Date(t.waktu_input), "dd MMM yyyy HH:mm", { locale: id })}
+                      {format(new Date(t.waktu_input), "HH:mm", { locale: id })}
                     </TableCell>
                     <TableCell className="text-center">
                       <Button

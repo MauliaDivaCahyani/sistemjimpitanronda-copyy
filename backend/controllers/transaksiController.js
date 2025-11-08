@@ -3,7 +3,9 @@ import { pool } from "../config/database.js";
 
 export const getAllTransaksi = async (req, res) => {
   try {
-    const [rows] = await pool.query(`
+    const { id_warga, tanggal } = req.query;
+    
+    let query = `
       SELECT 
         t.id_transaksi AS id, 
         t.id_warga,
@@ -20,8 +22,28 @@ export const getAllTransaksi = async (req, res) => {
       FROM transaksi t
       LEFT JOIN warga w ON t.id_warga = w.id_warga
       LEFT JOIN jenis_dana jd ON t.id_jenis_dana = jd.id_jenis_dana
-      ORDER BY t.waktu_input DESC
-    `);
+    `;
+    
+    const conditions = [];
+    const params = [];
+    
+    if (id_warga) {
+      conditions.push('t.id_warga = ?');
+      params.push(id_warga);
+    }
+    
+    if (tanggal) {
+      conditions.push('DATE(t.tanggal_selor) = ?');
+      params.push(tanggal);
+    }
+    
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+    
+    query += ' ORDER BY t.waktu_input DESC';
+    
+    const [rows] = await pool.query(query, params);
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error("Error getting all transaksi:", error);

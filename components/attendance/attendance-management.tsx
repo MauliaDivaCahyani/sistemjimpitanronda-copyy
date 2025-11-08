@@ -10,14 +10,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Users, Filter, Search } from "lucide-react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 import {
   getPresensi,
   getAttendanceSummary,
   type AttendanceFilter,
   type AttendanceSummary,
 } from "@/lib/attendance"
-import { getAllWarga } from "@/lib/database"
-import type { Presensi, Warga, User } from "@/types/database"
+import { getAllWarga, getAllPetugas } from "@/lib/database"
+import type { Presensi, Warga, User, Petugas } from "@/types/database"
 
 interface AttendanceManagementProps {
   currentUser: User
@@ -26,6 +28,7 @@ interface AttendanceManagementProps {
 export function AttendanceManagement({ currentUser }: AttendanceManagementProps) {
   const [presensi, setPresensi] = useState<Presensi[]>([])
   const [warga, setWarga] = useState<Warga[]>([])
+  const [petugas, setPetugas] = useState<Petugas[]>([])
   const [summary, setSummary] = useState<AttendanceSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -38,14 +41,23 @@ export function AttendanceManagement({ currentUser }: AttendanceManagementProps)
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [presensiData, wargaData, summaryData] = await Promise.all([
+        const [presensiData, wargaData, petugasData, summaryData] = await Promise.all([
           getPresensi(filter),
           getAllWarga(),
+          getAllPetugas(),
           getAttendanceSummary(filter),
         ])
 
+        console.log('AttendanceManagement - Loaded presensi:', presensiData.map(p => ({ 
+          id: p.id, 
+          id_warga: p.id_warga, 
+          status: p.status,
+          tanggal: p.tanggal 
+        })))
+
         setPresensi(presensiData)
         setWarga(wargaData.filter((w) => w.statusAktif))
+        setPetugas(petugasData.filter((p) => p.status === "Aktif"))
         setSummary(summaryData)
       } catch {
         setError("Gagal memuat data absensi")
@@ -63,13 +75,39 @@ export function AttendanceManagement({ currentUser }: AttendanceManagementProps)
 
   const getWargaName = (idWarga: string) => {
     const w = warga.find((w) => w.id === idWarga)
-    return w ? w.namaLengkap : "Unknown"
+    if (w) return w.namaLengkap
+    
+    // Coba cari di data petugas
+    const p = petugas.find((p) => p.id_warga === idWarga)
+    if (p) return p.namaLengkap
+    
+    return "Unknown"
   }
 
   const filteredPresensi = presensi.filter((p) => {
-    const wargaName = getWargaName(p.id_user).toLowerCase()
+    if (!p.id_warga) return false
+    const wargaName = getWargaName(p.id_warga).toLowerCase()
     return wargaName.includes(searchTerm.toLowerCase())
   })
+
+  const getStatusBadge = (status: string) => {
+    const normalizedStatus = status.toLowerCase()
+    
+    const statusConfig = {
+      hadir: { variant: "default" as const, className: "bg-primary text-white", label: "Hadir" },
+      izin: { variant: "secondary" as const, className: "bg-blue-500 text-white", label: "Izin" },
+      sakit: { variant: "secondary" as const, className: "bg-yellow-500 text-white", label: "Sakit" },
+      alpha: { variant: "destructive" as const, className: "bg-red-500 text-white", label: "Alpha" },
+      "tidak hadir": { variant: "destructive" as const, className: "bg-red-500 text-white", label: "Tidak Hadir" },
+    }
+    
+    const config = statusConfig[normalizedStatus as keyof typeof statusConfig] || statusConfig.hadir
+    return (
+      <Badge variant={config.variant} className={config.className}>
+        {config.label}
+      </Badge>
+    )
+  }
 
   if (loading) {
     return (
@@ -90,7 +128,7 @@ export function AttendanceManagement({ currentUser }: AttendanceManagementProps)
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Total Hadir</CardTitle>
-              <Users className="h-4 w-4 text-green-500" />
+              <Users className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{summary.totalHadir}</div>
@@ -146,16 +184,16 @@ export function AttendanceManagement({ currentUser }: AttendanceManagementProps)
             <Filter className="h-5 w-5" />
             Filter Absensi
           </CardTitle>
-          <CardDescription>Gunakan filter untuk menampilkan data kehadiran warga</CardDescription>
+          <CardDescription>Gunakan filter untuk menampilkan data kehadiran petugas</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
-              <Label>Cari Warga</Label>
+              <Label>Cari Petugas</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Cari nama warga..."
+                  placeholder="Cari nama petugas..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"

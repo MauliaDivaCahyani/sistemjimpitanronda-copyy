@@ -172,9 +172,9 @@ export default function ScanBarcodePage() {
                       onClick={() => handleSelectJenisDana(jenis)}
                       className="cursor-pointer rounded-xl border border-gray-200 bg-gray-50 p-5 hover:bg-primary/10 transition-all duration-200 shadow-sm hover:shadow-md"
                     >
-                      <h3 className="font-semibold text-gray-800 text-lg mb-1">{jenis.namaDana}</h3>
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{jenis.deskripsi}</p>
-                      <Badge className="bg-emerald-500/15 text-emerald-700 font-semibold">
+                      <h3 className="font-semibold text-card-foreground text-lg mb-1">{jenis.namaDana}</h3>
+                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{jenis.deskripsi}</p>
+                      <Badge className="bg-primary/15 text-primary font-semibold">
                         {formatCurrency(jenis.nominalDefault || 0)}
                       </Badge>
                     </div>
@@ -217,7 +217,7 @@ export default function ScanBarcodePage() {
                           <h3 className="font-semibold">{selectedWarga.namaLengkap}</h3>
                           <p className="text-sm text-muted-foreground">{selectedWarga.alamatRumah}</p>
                         </div>
-                        <Badge variant="default" className="bg-green-500 ml-auto">
+                        <Badge variant="default" className="ml-auto">
                           Aktif
                         </Badge>
                       </div>
@@ -278,9 +278,9 @@ export default function ScanBarcodePage() {
                       </Button>
 
                       {success && (
-                        <Alert className="border-green-200 bg-green-50">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          <AlertDescription className="text-green-800">{success}</AlertDescription>
+                        <Alert className="border-primary/30 bg-primary/10">
+                          <CheckCircle className="h-4 w-4 text-primary" />
+                          <AlertDescription className="text-foreground">{success}</AlertDescription>
                         </Alert>
                       )}
                     </CardContent>

@@ -71,13 +71,15 @@ export interface AttendanceSummary {
 }
 
 // Helper function to map frontend status to backend status
+// Backend ENUM (Updated): 'Hadir', 'Tidak Hadir', 'Izin', 'Sakit', 'Alpha'
 const mapStatusToBackend = (status: "hadir" | "izin" | "sakit" | "alpha"): string => {
   const statusMap = {
     hadir: "Hadir",
     izin: "Izin", 
-    sakit: "Tidak Hadir", // Backend tidak ada enum "Sakit", map ke "Tidak Hadir"
-    alpha: "Tidak Hadir", // Backend tidak ada enum "Alpha", map ke "Tidak Hadir"
+    sakit: "Sakit", // Sekarang sudah ada di ENUM
+    alpha: "Alpha", // Sekarang sudah ada di ENUM
   }
+  console.log(`Status mapping: ${status} -> ${statusMap[status]}`)
   return statusMap[status] || "Hadir"
 }
 
@@ -230,43 +232,58 @@ export const markAttendance = async (
   await new Promise((resolve) => setTimeout(resolve, 500))
 
   try {
+    console.log(`=== markAttendance START ===`)
     console.log(`markAttendance called: id_user=${id_user}, status=${status}`)
     
     const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    // Format tanggal untuk database (YYYY-MM-DD)
-    const tanggalStr = today.toISOString().split('T')[0]
     
-    console.log(`Mapped status: ${status} -> ${mapStatusToBackend(status)}`)
+    // Format tanggal untuk database (YYYY-MM-DD) - gunakan LOCAL timezone bukan UTC
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    const tanggalStr = `${year}-${month}-${day}`
+    
+    const mappedStatus = mapStatusToBackend(status)
+    console.log(`Mapped status: ${status} -> ${mappedStatus}`)
+    console.log(`Tanggal untuk database: ${tanggalStr}`)
 
     // Try to get existing attendance from backend
+    console.log(`Fetching today's presensi...`)
     const todayPresensi = await getTodayPresensi()
+    console.log(`Found ${todayPresensi.length} presensi records for today`)
+    
     const existingAttendance = todayPresensi.find((p) => p.id_user === id_user)
 
     if (existingAttendance) {
+      console.log(`Updating existing attendance for id_user ${id_user}`)
       // Update existing attendance
       const updated = await updatePresensi(existingAttendance.id, {
         id_warga: id_user, // Backend mengharapkan id_warga
         tanggal: tanggalStr, // Format tanggal yang benar
-        status: mapStatusToBackend(status), // Map status ke format backend
+        status: mappedStatus, // Map status ke format backend
         check_in: checkInTime || existingAttendance.check_in,
       })
+      console.log(`Update result:`, updated)
+      console.log(`=== markAttendance END (UPDATE) ===`)
       return updated
     }
 
     // Create new attendance record
+    console.log(`Creating new attendance for id_user ${id_user}`)
     const newAttendance = await createPresensi({
       id_warga: id_user, // Backend mengharapkan id_warga bukan id_user
       check_in: checkInTime || new Date(),
       check_out: null,
       tanggal: tanggalStr, // Kirim tanggal dalam format string YYYY-MM-DD
-      status: mapStatusToBackend(status), // Map status ke format backend
+      status: mappedStatus, // Map status ke format backend
     })
 
+    console.log(`Create result:`, newAttendance)
+    console.log(`=== markAttendance END (CREATE) ===`)
     return newAttendance
 
   } catch (error) {
+    console.error("=== markAttendance ERROR ===")
     console.error("Error saving attendance to backend:", error)
     // Fallback to mock data if API fails
     const today = new Date()

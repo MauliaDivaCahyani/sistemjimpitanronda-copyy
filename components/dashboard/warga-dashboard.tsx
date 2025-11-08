@@ -2,11 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TrendingUp, TrendingDown, DollarSign, Users, Calendar, Home, Target, History, UserCheck } from "lucide-react"
-import { KelompokRondaInfo } from "@/components/ronda/kelompok-ronda-info"
+import { DollarSign, Target, UserCheck, Calendar } from "lucide-react"
 import type { User } from "@/types/database"
 
 interface DashboardStats {
@@ -17,6 +14,10 @@ interface DashboardStats {
   rumahAktif: number
   totalTransaksi: number
   transaksiHariIni: number
+  nominalHariIni: number
+  statusBayar: 'LUNAS' | 'BELUM BAYAR'
+  totalWargaHariIni: number
+  wargaBayarHariIni: number
 }
 
 interface WargaDashboardProps {
@@ -25,28 +26,110 @@ interface WargaDashboardProps {
 
 export function WargaDashboard({ user }: WargaDashboardProps) {
   const [stats, setStats] = useState<DashboardStats>({
-    totalJimpitan: 150000,
+    totalJimpitan: 0,
     targetBulanIni: 200000,
-    persentaseTarget: 75,
-    totalRumah: 45,
-    rumahAktif: 42,
-    totalTransaksi: 15,
-    transaksiHariIni: 3
+    persentaseTarget: 0,
+    totalRumah: 0,
+    rumahAktif: 0,
+    totalTransaksi: 0,
+    transaksiHariIni: 0,
+    nominalHariIni: 0,
+    statusBayar: 'BELUM BAYAR',
+    totalWargaHariIni: 0,
+    wargaBayarHariIni: 0
   })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Simulate API call
     const fetchStats = async () => {
       try {
         setLoading(true)
-        // Mock delay
-        await new Promise(resolve => setTimeout(resolve, 1000))
         
-        // In real implementation, fetch from API
-        // const response = await fetch('/api/dashboard/warga')
-        // const data = await response.json()
-        // setStats(data)
+        // Fetch transaksi hari ini untuk semua warga
+        const today = new Date().toISOString().split('T')[0]
+        const transaksiRes = await fetch(`http://localhost:5006/api/transaksi?tanggal=${today}`)
+        const transaksiData = await transaksiRes.json()
+        
+        // Fetch total warga aktif
+        const wargaRes = await fetch('http://localhost:5006/api/warga')
+        const wargaData = await wargaRes.json()
+        
+        // Fetch transaksi untuk user yang login (semua transaksi)
+        const userTransaksiRes = await fetch(`http://localhost:5006/api/transaksi?id_warga=${user.id}`)
+        const userTransaksiData = await userTransaksiRes.json()
+        
+        // Fetch transaksi hari ini untuk user yang login (gunakan filter tanggal)
+        const userTodayRes = await fetch(`http://localhost:5006/api/transaksi?id_warga=${user.id}&tanggal=${today}`)
+        const userTodayData = await userTodayRes.json()
+        
+        console.log('=== DEBUG DASHBOARD WARGA ===')
+        console.log('Today:', today)
+        console.log('User ID:', user.id)
+        console.log('Transaksi hari ini user:', userTodayData)
+        
+        let totalWargaAktif = 0
+        let wargaBayarHariIni = 0
+        
+        if (wargaData.success && Array.isArray(wargaData.data)) {
+          totalWargaAktif = wargaData.data.filter((w: any) => w.statusAktif === 'Aktif').length
+        }
+        
+        if (transaksiData.success && Array.isArray(transaksiData.data)) {
+          // Hitung jumlah warga unik yang sudah bayar hari ini
+          const uniqueWarga = new Set(transaksiData.data.map((t: any) => t.id_warga))
+          wargaBayarHariIni = uniqueWarga.size
+        }
+        
+        // Status bayar: LUNAS jika semua warga aktif sudah bayar hari ini
+        const statusBayar = (totalWargaAktif > 0 && wargaBayarHariIni >= totalWargaAktif) ? 'LUNAS' : 'BELUM LUNAS'
+        
+        // Hitung total jimpitan bulan ini untuk user
+        let totalJimpitanBulanIni = 0
+        let totalTransaksiBulanIni = 0
+        let nominalTransaksiHariIni = 0
+        
+        if (userTransaksiData.success && Array.isArray(userTransaksiData.data)) {
+          const currentMonth = new Date().getMonth()
+          const currentYear = new Date().getFullYear()
+          
+          const transaksiBulanIni = userTransaksiData.data.filter((t: any) => {
+            if (!t.tanggal_selor) return false
+            const tDate = new Date(t.tanggal_selor)
+            if (isNaN(tDate.getTime())) return false
+            return tDate.getMonth() === currentMonth && 
+                   tDate.getFullYear() === currentYear &&
+                   t.status_jimpitan === 'lunas'
+          })
+          
+          totalJimpitanBulanIni = transaksiBulanIni.reduce((sum: number, t: any) => sum + (parseFloat(t.nominal) || 0), 0)
+          totalTransaksiBulanIni = transaksiBulanIni.length
+        }
+        
+        // Hitung nominal transaksi hari ini dari API filter tanggal
+        if (userTodayData.success && Array.isArray(userTodayData.data)) {
+          nominalTransaksiHariIni = userTodayData.data
+            .filter((t: any) => t.status_jimpitan === 'lunas')
+            .reduce((sum: number, t: any) => sum + (parseFloat(t.nominal) || 0), 0)
+          
+          console.log('Nominal transaksi hari ini:', nominalTransaksiHariIni)
+        }
+        
+        // Status bayar berdasarkan warga yang login: sudah bayar hari ini = LUNAS
+        const userStatusBayar = nominalTransaksiHariIni > 0 ? 'LUNAS' : 'BELUM BAYAR'
+        
+        setStats({
+          totalJimpitan: totalJimpitanBulanIni,
+          targetBulanIni: 200000,
+          persentaseTarget: Math.round((totalJimpitanBulanIni / 200000) * 100),
+          totalRumah: wargaData.success ? wargaData.data.length : 0,
+          rumahAktif: totalWargaAktif,
+          totalTransaksi: totalTransaksiBulanIni,
+          transaksiHariIni: transaksiData.success ? transaksiData.data.filter((t: any) => t.id_warga === user.id).length : 0,
+          nominalHariIni: nominalTransaksiHariIni,
+          statusBayar: userStatusBayar,
+          totalWargaHariIni: totalWargaAktif,
+          wargaBayarHariIni
+        })
         
       } catch (error) {
         console.error("Error fetching stats:", error)
@@ -54,14 +137,20 @@ export function WargaDashboard({ user }: WargaDashboardProps) {
         setLoading(false)
       }
     }
-
-    fetchStats()
-  }, [])
+    
+    if (user?.id) {
+      fetchStats()
+      
+      // Auto refresh setiap 1 menit
+      const interval = setInterval(fetchStats, 60000)
+      return () => clearInterval(interval)
+    }
+  }, [user?.id])
 
   const formatRupiah = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
       minimumFractionDigits: 0
     }).format(amount)
   }
@@ -81,33 +170,25 @@ export function WargaDashboard({ user }: WargaDashboardProps) {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">
-            Selamat datang, {user.namaLengkap || user.username}!
+            Selamat datang, {(user as any).nama || user.namaLengkap || user.username}!
           </CardTitle>
           <CardDescription>
-            Dashboard warga - Lihat informasi jimpitan dan kelompok ronda
+            Dashboard warga - Lihat informasi jimpitan Anda
           </CardDescription>
         </CardHeader>
       </Card>
 
-      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Dana Bulan Ini</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <span className="text-lg font-bold text-muted-foreground">Rp</span>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatRupiah(stats.totalJimpitan)}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600 flex items-center">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                +12% dari bulan lalu
-              </span>
-            </p>
           </CardContent>
         </Card>
 
@@ -118,9 +199,7 @@ export function WargaDashboard({ user }: WargaDashboardProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.persentaseTarget}%</div>
-            <p className="text-xs text-muted-foreground">
-              {formatRupiah(stats.targetBulanIni)} target
-            </p>
+            <p className="text-xs text-muted-foreground">{formatRupiah(stats.targetBulanIni)} target</p>
           </CardContent>
         </Card>
 
@@ -131,12 +210,15 @@ export function WargaDashboard({ user }: WargaDashboardProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              <Badge variant="default" className="bg-green-500 text-white">
-                LUNAS
+              <Badge 
+                variant={stats.statusBayar === 'LUNAS' ? 'default' : 'destructive'} 
+                className={stats.statusBayar === 'LUNAS' ? 'bg-primary text-white' : 'bg-red-500 text-white'}
+              >
+                {stats.statusBayar}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              Oktober 2025
+              {stats.statusBayar === 'LUNAS' ? 'Anda sudah bayar hari ini' : 'Anda belum bayar hari ini'}
             </p>
           </CardContent>
         </Card>
@@ -147,143 +229,11 @@ export function WargaDashboard({ user }: WargaDashboardProps) {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.transaksiHariIni}</div>
-            <p className="text-xs text-muted-foreground">
-              Total {stats.totalTransaksi} bulan ini
-            </p>
+            <div className="text-2xl font-bold">{formatRupiah(stats.nominalHariIni)}</div>
+            <p className="text-xs text-muted-foreground">Total {stats.totalTransaksi} bulan ini</p>
           </CardContent>
         </Card>
       </div>
-
-      {/* Tab Content */}
-      <Tabs defaultValue="progress" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="progress">Progress & Target</TabsTrigger>
-          <TabsTrigger value="history">Riwayat Transaksi</TabsTrigger>
-          <TabsTrigger value="ronda">Kelompok Ronda</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="progress" className="space-y-4">
-          {/* Progress Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Progress Target Bulanan</CardTitle>
-              <CardDescription>
-                Target jimpitan bulan ini: {formatRupiah(stats.targetBulanIni)}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span>Terkumpul: {formatRupiah(stats.totalJimpitan)}</span>
-                  <span>{stats.persentaseTarget}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                  <div 
-                    className="bg-primary h-2.5 rounded-full transition-all duration-300" 
-                    style={{ width: `${Math.min(stats.persentaseTarget, 100)}%` }}
-                  ></div>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Sisa: {formatRupiah(stats.targetBulanIni - stats.totalJimpitan)}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Detail Status Pembayaran */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Detail Status Pembayaran</CardTitle>
-              <CardDescription>
-                Informasi lengkap pembayaran jimpitan
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Status:</span>
-                    <Badge variant="default" className="bg-green-500">LUNAS</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Bulan:</span>
-                    <span className="text-sm">Oktober 2025</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Tanggal Bayar:</span>
-                    <span className="text-sm">15 Oktober 2025</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Jumlah:</span>
-                    <span className="text-sm font-bold">{formatRupiah(stats.totalJimpitan)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Metode:</span>
-                    <span className="text-sm">Transfer Bank</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">No. Ref:</span>
-                    <span className="text-sm text-muted-foreground">JMP202510001</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="history" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Riwayat Transaksi</CardTitle>
-              <CardDescription>
-                10 transaksi terakhir
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {[
-                  { tanggal: "2025-10-27", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
-                  { tanggal: "2025-10-26", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
-                  { tanggal: "2025-10-25", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
-                  { tanggal: "2025-10-24", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
-                  { tanggal: "2025-10-23", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
-                  { tanggal: "2025-10-22", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
-                  { tanggal: "2025-10-21", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
-                  { tanggal: "2025-10-20", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
-                  { tanggal: "2025-10-19", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
-                  { tanggal: "2025-10-18", jenis: "Jimpitan Harian", jumlah: 1000, status: "Berhasil" },
-                ].map((transaksi, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <div className="font-medium">{transaksi.jenis}</div>
-                      <div className="text-sm text-muted-foreground">{transaksi.tanggal}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">{formatRupiah(transaksi.jumlah)}</div>
-                      <Badge variant={transaksi.status === "Berhasil" ? "default" : "destructive"} className="text-xs">
-                        {transaksi.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 text-center">
-                <Button variant="outline" className="w-full">
-                  <History className="h-4 w-4 mr-2" />
-                  Lihat Semua Riwayat
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="ronda" className="space-y-4">
-          <KelompokRondaInfo userRole="warga" />
-        </TabsContent>
-      </Tabs>
     </div>
   )
 }

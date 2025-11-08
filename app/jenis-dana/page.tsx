@@ -162,7 +162,7 @@ export default function JenisDanaPage() {
     <DashboardLayout title="Jenis Dana">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             placeholder="Cari jenis dana..."
             value={searchTerm}
@@ -173,7 +173,7 @@ export default function JenisDanaPage() {
 
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto">
+            <Button className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               Tambah Jenis Dana
             </Button>
@@ -245,13 +245,13 @@ export default function JenisDanaPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredJenis.map((jenis) => (
-              <div key={jenis.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+              <div key={jenis.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-card">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-1">{jenis.namaDana}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{jenis.deskripsi}</p>
+                    <h3 className="font-semibold text-card-foreground mb-1">{jenis.namaDana}</h3>
+                    <p className="text-sm text-muted-foreground mb-2">{jenis.deskripsi}</p>
                   </div>
-                  <Badge variant={jenis.isActive ? "default" : "secondary"} className="bg-emerald-100 text-emerald-700">
+                  <Badge variant={jenis.isActive ? "default" : "secondary"}>
                     {jenis.isActive ? "Aktif" : "Nonaktif"}
                   </Badge>
                 </div>

@@ -217,7 +217,6 @@ export default function DataWargaPage() {
                       </div>
                       <Badge
                         variant={w.statusAktif === "Aktif" ? "default" : "secondary"}
-                        className={w.statusAktif === "Aktif" ? "bg-green-500" : "bg-gray-500"}
                       >
                         {w.statusAktif}
                       </Badge>
@@ -308,7 +307,6 @@ export default function DataWargaPage() {
                 </div>
                 <Badge
                   variant={selectedWarga.statusAktif === "Aktif" ? "default" : "secondary"}
-                  className={selectedWarga.statusAktif === "Aktif" ? "bg-green-500" : "bg-gray-500"}
                 >
                   {selectedWarga.statusAktif}
                 </Badge>

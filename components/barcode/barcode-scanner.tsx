@@ -167,9 +167,9 @@ export function BarcodeScanner({ onWargaFound }: BarcodeScannerProps) {
           )}
 
           {success && (
-            <Alert className="border-green-200 bg-green-50">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">{success}</AlertDescription>
+            <Alert className="border-primary/20 bg-primary/10">
+              <CheckCircle className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-primary">{success}</AlertDescription>
             </Alert>
           )}
         </CardContent>
@@ -199,7 +199,7 @@ export function BarcodeScanner({ onWargaFound }: BarcodeScannerProps) {
               <div className="flex-1 space-y-3">
                 <div>
                   <h3 className="text-xl font-semibold">{scannedWarga.namaLengkap}</h3>
-                  <Badge variant={scannedWarga.statusAktif ? "default" : "secondary"} className="bg-green-500">
+                  <Badge variant={scannedWarga.statusAktif ? "default" : "secondary"} className="bg-primary">
                     {scannedWarga.statusAktif ? "Aktif" : "Tidak Aktif"}
                   </Badge>
                 </div>

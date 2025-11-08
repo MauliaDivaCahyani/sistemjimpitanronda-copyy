@@ -266,7 +266,7 @@ export default function InputManualPage() {
               
               {/* Search Warga */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   placeholder="Cari nama warga atau NIK..."
                   value={searchTerm}
@@ -284,7 +284,7 @@ export default function InputManualPage() {
                     <SelectItem key={warga.id} value={warga.id}>
                       <div className="flex flex-col">
                         <span className="font-medium">{warga.namaLengkap}</span>
-                        <span className="text-xs text-gray-500">NIK: {warga.nik}</span>
+                        <span className="text-xs text-muted-foreground">NIK: {warga.nik}</span>
                       </div>
                     </SelectItem>
                   ))}

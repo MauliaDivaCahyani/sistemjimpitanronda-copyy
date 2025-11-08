@@ -5,7 +5,12 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5006/a
 // Helper umum untuk request
 async function apiRequest<T = any>(endpoint: string, options?: RequestInit): Promise<T> {
   try {
-    const res = await fetch(`${API_BASE_URL}/${endpoint}`, {
+    // Tambahkan timestamp untuk force refresh dan hindari cache
+    const timestamp = new Date().getTime()
+    const separator = endpoint.includes('?') ? '&' : '?'
+    const urlWithTimestamp = `${API_BASE_URL}/${endpoint}${separator}_t=${timestamp}`
+    
+    const res = await fetch(urlWithTimestamp, {
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
       ...options,
@@ -95,21 +100,28 @@ export async function getWargaByBarcode(barcode: string): Promise<Warga | null> 
 /* ==================== PETUGAS ==================== */
 export async function getAllPetugas(): Promise<Petugas[]> {
   const data = await apiRequest<any[]>("petugas")
-  return data.map((item) => ({
-    id: item.id || item.id_petugas,
-    id_warga: item.id_warga, // Simpan id_warga untuk keperluan presensi
-    kelompokId: item.kelompokId || item.id_kelompok_ronda, // Tambahkan kelompokId
-    namaLengkap: item.namaWarga || item.nama_lengkap || "",
-    nik: item.nik || "",
-    namaKelompok: item.namaKelompok || "",
-    jadwalHari: item.jadwalHari || "", // Tambahkan jadwalHari
-    jabatan: item.jabatan || "",
-    role: item.role || "petugas",
-    status: item.status || "Tidak Aktif",
-    username: item.username || "",
-    createdAt: new Date(item.created_at || new Date()),
-    updatedAt: new Date(item.updated_at || new Date()),
-  }))
+  console.log("🔍 RAW DATA FROM API:", data.filter(d => ['Superadmin1', 'Admin13'].includes(d.username)))
+  return data.map((item) => {
+    const mapped = {
+      id: item.id || item.id_petugas,
+      id_warga: item.id_warga, // Simpan id_warga untuk keperluan presensi
+      kelompokId: item.kelompokId || item.id_kelompok_ronda, // Tambahkan kelompokId
+      namaLengkap: item.namaWarga || item.nama_lengkap || "",
+      nik: item.nik || "",
+      namaKelompok: item.namaKelompok || "",
+      jadwalHari: item.jadwalHari || "", // Tambahkan jadwalHari
+      jabatan: item.jabatan || "",
+      role: item.role, // HAPUS FALLBACK - gunakan langsung dari backend
+      status: item.status || "Tidak Aktif",
+      username: item.username || "",
+      createdAt: new Date(item.created_at || new Date()),
+      updatedAt: new Date(item.updated_at || new Date()),
+    }
+    if (['Superadmin1', 'Admin13'].includes(item.username)) {
+      console.log(`🔍 MAPPED ${item.username}:`, { original_role: item.role, mapped_role: mapped.role })
+    }
+    return mapped
+  })
 }
 
 export async function createPetugas(data: any) {
@@ -121,6 +133,7 @@ export async function createPetugas(data: any) {
 }
 
 export async function updatePetugas(id: string, data: Partial<User>): Promise<any> {
+  console.log("🔄 updatePetugas called with:", { id, data })
   return apiRequest<any>(`petugas/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
@@ -129,6 +142,39 @@ export async function updatePetugas(id: string, data: Partial<User>): Promise<an
 
 export async function deletePetugas(id: string): Promise<void> {
   await apiRequest(`petugas/${id}`, { method: "DELETE" })
+}
+
+export async function checkPetugasScheduleToday(idPetugas: string): Promise<{
+  hasScheduleToday: boolean
+  todayName: string
+  jadwalHari?: string
+  namaKelompok?: string
+}> {
+  try {
+    // Panggil API dengan id_petugas (tanpa parameter checkBy)
+    const response = await fetch(`${API_BASE_URL}/petugas/${idPetugas}/check-schedule`)
+    
+    if (!response.ok) {
+      console.error("Failed to check schedule:", response.statusText)
+      return { hasScheduleToday: false, todayName: '' }
+    }
+    
+    const data = await response.json()
+    
+    if (data.success && data.data) {
+      return {
+        hasScheduleToday: data.data.hasScheduleToday,
+        todayName: data.data.today,
+        jadwalHari: data.data.jadwal_hari,
+        namaKelompok: data.data.nama_kelompok
+      }
+    }
+    
+    return { hasScheduleToday: false, todayName: '' }
+  } catch (error) {
+    console.error("Error checking petugas schedule:", error)
+    return { hasScheduleToday: false, todayName: '' }
+  }
 }
 
 /* ==================== JENIS DANA ==================== */
@@ -213,28 +259,72 @@ export async function getAllPresensi(): Promise<Presensi[]> {
 }
 
 export async function createPresensi(data: any): Promise<Presensi | any> {
+  // Helper function to convert Date to MySQL DATETIME format in Indonesia timezone
+  const toMySQLDateTime = (date: Date | null | undefined): string | null => {
+    if (!date) return null;
+    
+    // Pastikan date adalah Date object
+    const dateObj = date instanceof Date ? date : new Date(date);
+    
+    // Format sebagai YYYY-MM-DD HH:mm:ss menggunakan waktu lokal browser
+    // Browser user di Indonesia akan otomatis menggunakan GMT+7
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const hours = String(dateObj.getHours()).padStart(2, '0');
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    const seconds = String(dateObj.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
+  
   // Convert frontend data format to backend format
   const backendData = {
     id_warga: data.id_warga || data.id_user, // Backend expects id_warga
     tanggal: data.tanggal, // Should be in YYYY-MM-DD format
-    check_in: data.check_in,
-    check_out: data.check_out,
+    check_in: toMySQLDateTime(data.check_in),
+    check_out: toMySQLDateTime(data.check_out),
     status: data.status,
   }
   
-  return apiRequest<any>("presensi", {
+  console.log("createPresensi - Input data:", data)
+  console.log("createPresensi - Backend data:", backendData)
+  
+  const result = await apiRequest<any>("presensi", {
     method: "POST",
     body: JSON.stringify(backendData),
   })
+  
+  console.log("createPresensi - Result:", result)
+  return result
 }
 
 export async function updatePresensi(id: string, data: any): Promise<Presensi | any> {
+  // Helper function to convert Date to MySQL DATETIME format in Indonesia timezone
+  const toMySQLDateTime = (date: Date | null | undefined): string | null => {
+    if (!date) return null;
+    
+    // Pastikan date adalah Date object
+    const dateObj = date instanceof Date ? date : new Date(date);
+    
+    // Format sebagai YYYY-MM-DD HH:mm:ss menggunakan waktu lokal browser
+    // Browser user di Indonesia akan otomatis menggunakan GMT+7
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const hours = String(dateObj.getHours()).padStart(2, '0');
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    const seconds = String(dateObj.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
+  
   // Convert frontend data format to backend format
   const backendData = {
     id_warga: data.id_warga || data.id_user, // Backend expects id_warga
     tanggal: data.tanggal, // Should be in YYYY-MM-DD format
-    check_in: data.check_in,
-    check_out: data.check_out,
+    check_in: toMySQLDateTime(data.check_in),
+    check_out: toMySQLDateTime(data.check_out),
     status: data.status,
   }
   
@@ -246,11 +336,16 @@ export async function updatePresensi(id: string, data: any): Promise<Presensi | 
 
 export async function getTodayPresensi(): Promise<Presensi[]> {
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
 
-  return apiRequest<Presensi[]>(`presensi?startDate=${today.toISOString()}&endDate=${tomorrow.toISOString()}`)
+  // Format tanggal ke YYYY-MM-DD untuk backend
+  const todayStr = today.toISOString().split('T')[0]
+  const tomorrowStr = tomorrow.toISOString().split('T')[0]
+  
+  console.log(`getTodayPresensi: startDate=${todayStr}, endDate=${tomorrowStr}`)
+
+  return apiRequest<Presensi[]>(`presensi?startDate=${todayStr}&endDate=${tomorrowStr}`)
 }
 
 // Alias agar tetap bisa pakai nama pendek

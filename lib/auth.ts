@@ -9,6 +9,12 @@ export const authenticateUser = async (
 ): Promise<User | null> => {
   try {
     console.log("[AUTH] Making login request to:", `${API_BASE_URL}/auth/login`)
+    console.log("[AUTH] API_BASE_URL from env:", API_BASE_URL)
+    console.log("[AUTH] Login type:", loginType)
+    
+    // Add timeout untuk prevent hanging
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
     
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
@@ -20,7 +26,8 @@ export const authenticateUser = async (
         password,
         loginType,
       }),
-    })
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeoutId))
 
     console.log("[AUTH] Response status:", response.status)
     const data = await response.json()
@@ -28,7 +35,8 @@ export const authenticateUser = async (
 
     if (!response.ok) {
       console.error("Login failed:", data.message)
-      return null
+      // Throw error dengan pesan dari backend
+      throw new Error(data.message || "Login gagal")
     }
 
     if (data.success && data.data?.user) {
@@ -43,10 +51,17 @@ export const authenticateUser = async (
       return data.data.user
     }
 
-    return null
+    throw new Error("Data user tidak valid")
   } catch (error) {
     console.error("Authentication error:", error)
-    return null
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        throw new Error("Koneksi timeout - Server tidak merespons")
+      }
+      // Re-throw error dengan pesan asli
+      throw error
+    }
+    throw new Error("Terjadi kesalahan saat login")
   }
 }
 

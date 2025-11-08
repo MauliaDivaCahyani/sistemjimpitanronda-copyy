@@ -46,6 +46,12 @@ export const menuItems: MenuItem[] = [
     roles: ["warga", "petugas", "admin", "super_admin"],
   },
   {
+    title: "Data Transaksi",
+    href: "/data-transaksi",
+    icon: Receipt,
+    roles: ["warga"],
+  },
+  {
     title: "Data Rumah",
     href: "/data-rumah",
     icon: Building2,

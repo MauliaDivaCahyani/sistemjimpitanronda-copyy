@@ -65,14 +65,31 @@ export function PetugasForm({ isOpen, onClose, onSubmit, initialData, mode }: Pe
 
   useEffect(() => {
     if (initialData && mode === "edit") {
+      // Convert role from backend format to frontend format
+      const roleFromBackend = String(initialData.role || 'petugas').toLowerCase()
+      let frontendRole: "petugas" | "admin" | "super_admin" = "petugas"
+      
+      if (roleFromBackend === 'superadmin' || roleFromBackend === 'super_admin') {
+        frontendRole = 'super_admin'
+      } else if (roleFromBackend === 'admin') {
+        frontendRole = 'admin'
+      } else {
+        frontendRole = 'petugas'
+      }
+
+      console.log("📝 Loading initial data for edit:", {
+        backendRole: initialData.role,
+        convertedRole: frontendRole
+      })
+
       setFormData({
-        idWarga: (initialData as any).idWarga || "",
-        idKelompokRonda: (initialData as any).idKelompokRonda || "",
+        idWarga: (initialData as any).idWarga || (initialData as any).id_warga || "",
+        idKelompokRonda: (initialData as any).kelompokId || (initialData as any).id_kelompok_ronda || "",
         username: initialData.username || "",
         password: "",
         jabatan: initialData.jabatan || "",
         status: initialData.statusUser ? "aktif" : "nonaktif",
-        role: initialData.role as "petugas" | "admin" | "super_admin",
+        role: frontendRole,
       })
     } else {
       setFormData({
@@ -126,11 +143,21 @@ export function PetugasForm({ isOpen, onClose, onSubmit, initialData, mode }: Pe
       return
     }
 
+    // Convert role from frontend format to backend format
+    const roleMapping: Record<string, string> = {
+      'petugas': 'Petugas',
+      'admin': 'Admin',
+      'super_admin': 'SuperAdmin'
+    }
+
     const payload = {
       ...formData,
+      role: roleMapping[formData.role] || 'Petugas', // Convert to backend format
       statusUser: formData.status === "aktif",
       kelompokId: formData.idKelompokRonda === "none" ? null : formData.idKelompokRonda,
     }
+
+    console.log("🔄 Submitting petugas form:", payload)
 
     onSubmit(payload)
     onClose()

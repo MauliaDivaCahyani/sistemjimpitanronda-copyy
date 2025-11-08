@@ -262,7 +262,7 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
         return (
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="text-center mb-4">
-              <User className="h-12 w-12 mx-auto text-emerald-600 mb-2" />
+              <User className="h-12 w-12 mx-auto text-primary mb-2" />
               <p className="text-sm text-gray-600">Login sebagai petugas untuk melakukan transaksi</p>
             </div>
             
@@ -304,7 +304,7 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
         return (
           <div className="space-y-4">
             <div className="text-center mb-4">
-              <Coins className="h-12 w-12 mx-auto text-emerald-600 mb-2" />
+              <Coins className="h-12 w-12 mx-auto text-primary mb-2" />
               <p className="text-sm text-gray-600">Pilih jenis dana untuk transaksi</p>
               <p className="text-xs text-gray-500 mt-1">Petugas: {petugas?.name}</p>
             </div>
@@ -313,7 +313,7 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
               {jenisDanaList.map((jenis) => (
                 <div
                   key={jenis.id}
-                  className="p-3 border rounded-lg cursor-pointer hover:border-emerald-300 hover:bg-emerald-50 transition-all"
+                  className="p-3 border rounded-lg cursor-pointer hover:border-primary/30 hover:bg-primary/10 transition-all"
                   onClick={() => handleSelectJenis(jenis)}
                 >
                   <h3 className="font-medium">{jenis.namaDana}</h3>
@@ -357,7 +357,7 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-2">
-                <Coins className="h-5 w-5 text-emerald-600" />
+                <Coins className="h-5 w-5 text-primary" />
                 <span className="font-medium">Jenis Dana:</span>
                 <Badge>{selectedJenis?.namaDana}</Badge>
               </div>
@@ -435,7 +435,7 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
 
             {/* Summary */}
             {formData.selectedWarga && (formData.nominal && formData.nominal !== "custom" || formData.customNominal) && (
-              <Card className="bg-emerald-50 border-emerald-200">
+              <Card className="bg-primary/10 border-primary/30">
                 <CardContent className="pt-4">
                   <h3 className="font-medium mb-2">Ringkasan Transaksi:</h3>
                   <div className="space-y-1 text-sm">

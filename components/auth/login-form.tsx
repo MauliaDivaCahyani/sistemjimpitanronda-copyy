@@ -41,11 +41,15 @@ export function LoginForm({ onLogin }: LoginFormProps) {
       const user = await authenticateUser(phoneLogin.nomorHp, phoneLogin.password, "phone")
       if (user) {
         onLogin(user)
-      } else {
-        setError("Nomor HP tidak ditemukan atau tidak aktif")
       }
     } catch (err) {
-      setError("Terjadi kesalahan saat login")
+      // Tampilkan pesan error spesifik dari backend
+      if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError("Terjadi kesalahan saat login")
+      }
+      console.error("Login error:", err)
     } finally {
       setIsLoading(false)
     }
@@ -60,11 +64,15 @@ export function LoginForm({ onLogin }: LoginFormProps) {
       const user = await authenticateUser(usernameLogin.username, usernameLogin.password, "username")
       if (user) {
         onLogin(user)
-      } else {
-        setError("Username tidak ditemukan atau tidak aktif")
       }
     } catch (err) {
-      setError("Terjadi kesalahan saat login")
+      // Tampilkan pesan error spesifik dari backend
+      if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError("Terjadi kesalahan saat login")
+      }
+      console.error("Login error:", err)
     } finally {
       setIsLoading(false)
     }

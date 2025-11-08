@@ -114,15 +114,18 @@ export default function DaftarTransaksiPage() {
     return new Date(dateString).toLocaleDateString('id-ID')
   }
 
-  const formatDateTime = (dateString: string | null) => {
+  const formatTime = (dateString: string | null) => {
     if (!dateString) return "-"
-    return new Date(dateString).toLocaleString('id-ID')
+    return new Date(dateString).toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "lunas":
-        return <Badge className="bg-green-500">Lunas</Badge>
+        return <Badge variant="default">Lunas</Badge>
       case "belum_lunas":
         return <Badge variant="secondary">Belum Lunas</Badge>
       default:
@@ -176,7 +179,7 @@ export default function DaftarTransaksiPage() {
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
                 placeholder="Cari nama warga, NIK, atau jenis dana..."
                 value={searchTerm}
@@ -210,7 +213,7 @@ export default function DaftarTransaksiPage() {
         <CardContent>
           {filteredTransaksi.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-500">Tidak ada transaksi yang ditemukan</p>
+              <p className="text-muted-foreground">Tidak ada transaksi yang ditemukan</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -220,13 +223,13 @@ export default function DaftarTransaksiPage() {
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <User className="h-4 w-4 text-gray-500" />
-                          <h3 className="font-medium text-gray-900">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <h3 className="font-medium text-card-foreground">
                             {transaksi.namaWarga || "Nama tidak tersedia"}
                           </h3>
                           {getStatusBadge(transaksi.status_jimpitan)}
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-600">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <span className="font-medium">NIK:</span>
                             <span>{transaksi.nikWarga || "-"}</span>
@@ -242,17 +245,17 @@ export default function DaftarTransaksiPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-xl font-bold text-green-600">
+                        <div className="text-xl font-bold text-primary">
                           {formatCurrency(transaksi.nominal || 0)}
                         </div>
-                        <div className="text-xs text-gray-500">
-                          Input: {formatDateTime(transaksi.waktu_input)}
+                        <div className="text-xs text-muted-foreground">
+                          Input: {formatTime(transaksi.waktu_input)}
                         </div>
                       </div>
                     </div>
                     
                     <div className="flex justify-between items-center pt-3 border-t">
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         ID Transaksi: #{transaksi.id}
                       </div>
                       <Button variant="outline" size="sm">
