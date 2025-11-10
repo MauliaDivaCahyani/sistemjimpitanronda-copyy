@@ -105,7 +105,7 @@ CREATE TABLE transaksi (
     id_transaksi INT AUTO_INCREMENT PRIMARY KEY,
     id_warga INT,
     id_user INT,
-    tanggal_selor DATE,
+    tanggal_setor DATE,
     waktu_input DATETIME DEFAULT CURRENT_TIMESTAMP,
     nominal DECIMAL(12,2),
     status_jimpitan ENUM('lunas','belum_lunas') DEFAULT 'lunas',
