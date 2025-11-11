@@ -45,8 +45,12 @@ export const authenticateUser = async (
         localStorage.setItem("authToken", data.data.token)
       }
       
-      // Store user data in localStorage
-      localStorage.setItem("currentUser", JSON.stringify(data.data.user))
+      // Ensure role is saved
+      const userData = data.data.user
+      localStorage.setItem("currentUser", JSON.stringify({
+        ...userData,
+        role: userData.role || "petugas" // Fallback jika tidak ada
+      }))
       
       return data.data.user
     }

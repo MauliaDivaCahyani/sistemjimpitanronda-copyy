@@ -37,27 +37,18 @@ export const login = async (req, res) => {
     } else if (loginType === "username") {
       // Login for Petugas, Admin, Super Admin using username
       userQuery = `
-        SELECT p.id_petugas as id, w.nama_lengkap as nama, p.username, 
-               p.role, p.jabatan,
-               CASE 
-                 WHEN LOWER(p.role) = 'superadmin' OR LOWER(p.jabatan) LIKE '%superadmin%' OR LOWER(p.jabatan) LIKE '%super admin%' THEN 'super_admin'
-                 WHEN LOWER(p.role) = 'admin' THEN 'admin' 
-                 WHEN LOWER(p.role) = 'petugas' THEN 'petugas'
-                 ELSE LOWER(REPLACE(p.role, ' ', '_'))
-               END as user_role,
-               p.status, p.password as stored_password, p.username as identifier_field,
-               kr.nama_kelompok as kelompokRonda,
-               w.nomor_hp as nomorHp, w.email, w.alamat
+        SELECT p.id_petugas as id, p.username, p.password as stored_password,
+               p.role, p.status, p.jabatan,
+               p.username as identifier_field,
+               p.username as nama
         FROM petugas p
-        LEFT JOIN warga w ON p.id_warga = w.id_warga
-        LEFT JOIN kelompok_ronda kr ON p.id_kelompok_ronda = kr.id_kelompok_ronda
         WHERE p.username = ? AND p.status = 'Aktif'
       `
       userParams = [identifier]
     } else {
       return res.status(400).json({
         success: false,
-        message: "LoginType harus 'phone' atau 'username'"
+        message: "Login type tidak valid"
       })
     }
 
@@ -76,8 +67,7 @@ export const login = async (req, res) => {
       id: user.id, 
       nama: user.nama, 
       role_db: user.role,
-      jabatan: user.jabatan,
-      computed_role: user.user_role || user.role
+      jabatan: user.jabatan
     })
 
     // Password verification
@@ -104,14 +94,13 @@ export const login = async (req, res) => {
       })
     }
 
-    // Use the computed role
-    const finalRole = user.user_role || user.role
+    // Generate JWT token - FIX: Normalize role to lowercase
+    const finalRole = (user.role || "petugas").toLowerCase()
 
-    // Generate JWT token
     const tokenPayload = {
       id: user.id,
       nama: user.nama,
-      role: finalRole,
+      role: finalRole,  // Now it's 'admin' instead of 'Admin'
       identifier: user.identifier_field
     }
 
