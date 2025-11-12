@@ -8,7 +8,7 @@ export default function TransactionForm() {
     id_warga: "",
     id_jenis: "",
     id_user: "2", // contoh: otomatis ambil dari user login
-    tanggal_selor: new Date(),
+    tanggal_setor: new Date(),
     waktu_input: new Date(),
     nominal: 0,
     status_jimpitan: "belum_lunas" as "lunas" | "belum_lunas",
@@ -21,7 +21,7 @@ export default function TransactionForm() {
       [name]:
         name === "nominal"
           ? Number(value)
-          : name === "tanggal_selor"
+          : name === "tanggal_setor"
           ? new Date(value)
           : value,
     }))
@@ -80,7 +80,7 @@ export default function TransactionForm() {
         <label className="block mb-1">Tanggal Setor</label>
         <input
           type="date"
-          name="tanggal_selor"
+          name="tanggal_setor"
           onChange={handleChange}
           className="border px-2 py-1 rounded w-full"
           required

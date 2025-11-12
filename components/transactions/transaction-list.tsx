@@ -311,35 +311,43 @@ export function TransactionList() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTransaksi.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell>{format(new Date(t.tanggal_selor), "dd MMM yyyy", { locale: id })}</TableCell>
-                    <TableCell className="font-medium">{getWargaName(t)}</TableCell>
-                    <TableCell>{getJenisDanaName(t)}</TableCell>
-                    <TableCell className="font-mono">{formatCurrency(t.nominal)}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={t.status_jimpitan === "lunas" ? "default" : "secondary"}
-                        className={t.status_jimpitan === "lunas" ? "bg-primary" : "bg-yellow-500"}
-                      >
-                        {t.status_jimpitan === "lunas" ? "Lunas" : "Belum Lunas"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {format(new Date(t.waktu_input), "HH:mm", { locale: id })}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteTransaction(t.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredTransaksi.map((t) => {
+                  // Handle both field name variations from backend
+                  const tanggalSetor = t.tanggal_setor || (t as any).tanggal_selor
+                  const transactionId = t.id || (t as any).id_transaksi
+                  
+                  return (
+                    <TableRow key={transactionId}>
+                      <TableCell>
+                        {tanggalSetor ? format(new Date(tanggalSetor), "dd MMM yyyy", { locale: id }) : 'N/A'}
+                      </TableCell>
+                      <TableCell className="font-medium">{getWargaName(t)}</TableCell>
+                      <TableCell>{getJenisDanaName(t)}</TableCell>
+                      <TableCell className="font-mono">{formatCurrency(t.nominal)}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={t.status_jimpitan === "lunas" ? "default" : "secondary"}
+                          className={t.status_jimpitan === "lunas" ? "bg-primary" : "bg-yellow-500"}
+                        >
+                          {t.status_jimpitan === "lunas" ? "Lunas" : "Belum Lunas"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {t.waktu_input ? format(new Date(t.waktu_input), "HH:mm", { locale: id }) : 'N/A'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteTransaction(Number(transactionId))}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
 

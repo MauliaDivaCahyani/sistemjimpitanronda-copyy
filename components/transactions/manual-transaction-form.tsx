@@ -40,6 +40,7 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
   const [jenisDanaList, setJenisDanaList] = useState<JenisDana[]>([])
   const [filteredWarga, setFilteredWarga] = useState<Warga[]>([])
   const [searchTerm, setSearchTerm] = useState("")
+  const [showWargaList, setShowWargaList] = useState(false)
   const [petugas, setPetugas] = useState<PetugasLogin | null>(null)
   const [step, setStep] = useState<"login" | "pilih-jenis" | "input-manual" | "scan-barcode">("login")
   const [selectedJenis, setSelectedJenis] = useState<JenisDana | null>(null)
@@ -47,21 +48,8 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
   const [formData, setFormData] = useState({
     selectedWarga: "",
     nominal: "",
-    customNominal: "",
     tanggal: new Date().toISOString().split("T")[0],
   })
-
-  // Nominal dalam kelipatan Rp 5.000
-  const nominalOptions = [
-    { value: "5000", label: "Rp 5.000" },
-    { value: "10000", label: "Rp 10.000" },
-    { value: "15000", label: "Rp 15.000" },
-    { value: "20000", label: "Rp 20.000" },
-    { value: "25000", label: "Rp 25.000" },
-    { value: "30000", label: "Rp 30.000" },
-    { value: "50000", label: "Rp 50.000" },
-    { value: "custom", label: "Nominal Lain..." }
-  ]
 
   useEffect(() => {
     if (isOpen) {
@@ -78,10 +66,11 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
       // Reset state saat dialog ditutup
       setStep("login")
       setSelectedJenis(null)
+      setSearchTerm("")
+      setShowWargaList(false)
       setFormData({
         selectedWarga: "",
         nominal: "",
-        customNominal: "",
         tanggal: new Date().toISOString().split("T")[0],
       })
     }
@@ -172,37 +161,10 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
     setStep("scan-barcode")
   }
 
-  const handleNominalChange = (value: string) => {
-    if (value === "custom") {
-      setFormData({ ...formData, nominal: "custom", customNominal: "" })
-    } else {
-      setFormData({ ...formData, nominal: value, customNominal: "" })
-    }
-  }
-
-  const handleCustomNominalChange = (value: string) => {
-    const numValue = parseInt(value)
-    if (isNaN(numValue) || numValue < 0) {
-      setFormData({ ...formData, customNominal: "" })
-      return
-    }
-    
-    if (numValue % 5000 !== 0) {
-      toast({
-        title: "Nominal Tidak Valid",
-        description: "Nominal harus kelipatan Rp 5.000",
-        variant: "destructive",
-      })
-      return
-    }
-    
-    setFormData({ ...formData, customNominal: value })
-  }
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.selectedWarga || (!formData.nominal || formData.nominal === "custom" && !formData.customNominal)) {
+    if (!formData.selectedWarga || !formData.nominal) {
       toast({
         title: "Form Tidak Lengkap",
         description: "Semua field wajib diisi",
@@ -211,12 +173,12 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
       return
     }
 
-    const nominal = formData.nominal === "custom" ? parseInt(formData.customNominal) : parseInt(formData.nominal)
+    const nominal = parseInt(formData.nominal)
     
-    if (nominal < 5000 || nominal % 5000 !== 0) {
+    if (isNaN(nominal) || nominal <= 0) {
       toast({
         title: "Nominal Tidak Valid",
-        description: "Nominal harus minimal Rp 5.000 dan kelipatan Rp 5.000",
+        description: "Nominal harus berupa angka positif",
         variant: "destructive",
       })
       return
@@ -227,7 +189,7 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
       id_jenis_dana: selectedJenis!.id,
       id_user: petugas!.id,
       nominal: nominal,
-      tanggal_selor: formData.tanggal,
+      tanggal_setor: formData.tanggal,
       status_jimpitan: "lunas",
     })
 
@@ -237,7 +199,6 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
     setFormData({
       selectedWarga: "",
       nominal: "",
-      customNominal: "",
       tanggal: new Date().toISOString().split("T")[0],
     })
     onClose()
@@ -368,58 +329,87 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
             <div className="space-y-2">
               <Label htmlFor="search">Cari dan Pilih Warga</Label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 z-10" />
                 <Input
                   placeholder="Cari nama warga atau NIK..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    setShowWargaList(true)
+                  }}
+                  onFocus={() => setShowWargaList(true)}
                   className="pl-10"
                 />
               </div>
               
-              <Select value={formData.selectedWarga} onValueChange={(value) => setFormData({ ...formData, selectedWarga: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih warga" />
-                </SelectTrigger>
-                <SelectContent className="max-h-48">
-                  {filteredWarga.map((warga) => (
-                    <SelectItem key={warga.id} value={warga.id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{warga.namaLengkap}</span>
-                        <span className="text-xs text-gray-500">NIK: {warga.nik}</span>
+              {/* Display selected warga */}
+              {formData.selectedWarga && !showWargaList && (
+                <div className="p-3 border rounded-lg bg-primary/10 border-primary/30">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-sm">
+                        {wargaList.find(w => w.id === formData.selectedWarga)?.namaLengkap}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        NIK: {wargaList.find(w => w.id === formData.selectedWarga)?.nik}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setFormData({ ...formData, selectedWarga: "" })
+                        setSearchTerm("")
+                        setShowWargaList(true)
+                      }}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      ✕
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {/* List of filtered warga - show when searching or focused */}
+              {showWargaList && !formData.selectedWarga && (
+                <div className="border rounded-lg max-h-48 overflow-y-auto bg-white shadow-lg">
+                  {filteredWarga.length > 0 ? (
+                    filteredWarga.map((warga) => (
+                      <div
+                        key={warga.id}
+                        className="p-3 hover:bg-primary/10 cursor-pointer border-b last:border-b-0 transition-colors"
+                        onClick={() => {
+                          setFormData({ ...formData, selectedWarga: warga.id })
+                          setSearchTerm(warga.namaLengkap)
+                          setShowWargaList(false)
+                        }}
+                      >
+                        <p className="font-medium text-sm">{warga.namaLengkap}</p>
+                        <p className="text-xs text-gray-500">NIK: {warga.nik}</p>
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-sm text-gray-500">
+                      Tidak ada warga ditemukan
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Nominal */}
             <div className="space-y-2">
-              <Label htmlFor="nominal">Nominal (Kelipatan Rp 5.000)</Label>
-              <Select value={formData.nominal} onValueChange={handleNominalChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih nominal" />
-                </SelectTrigger>
-                <SelectContent>
-                  {nominalOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              {formData.nominal === "custom" && (
-                <Input
-                  type="number"
-                  placeholder="Masukkan nominal (kelipatan Rp 5.000)"
-                  value={formData.customNominal}
-                  onChange={(e) => handleCustomNominalChange(e.target.value)}
-                  step="5000"
-                  min="5000"
-                />
-              )}
+              <Label htmlFor="nominal">Nominal</Label>
+              <Input
+                id="nominal"
+                type="number"
+                placeholder="Masukkan nominal (contoh: 5000)"
+                value={formData.nominal}
+                onChange={(e) => setFormData({ ...formData, nominal: e.target.value })}
+                min="1"
+                required
+              />
             </div>
 
             {/* Tanggal */}
@@ -434,16 +424,14 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
             </div>
 
             {/* Summary */}
-            {formData.selectedWarga && (formData.nominal && formData.nominal !== "custom" || formData.customNominal) && (
+            {formData.selectedWarga && formData.nominal && (
               <Card className="bg-primary/10 border-primary/30">
                 <CardContent className="pt-4">
                   <h3 className="font-medium mb-2">Ringkasan Transaksi:</h3>
                   <div className="space-y-1 text-sm">
                     <p><span className="font-medium">Warga:</span> {getSelectedWargaName()}</p>
                     <p><span className="font-medium">Jenis Dana:</span> {selectedJenis?.namaDana}</p>
-                    <p><span className="font-medium">Nominal:</span> {formatCurrency(
-                      formData.nominal === "custom" ? parseInt(formData.customNominal) : parseInt(formData.nominal)
-                    )}</p>
+                    <p><span className="font-medium">Nominal:</span> {formatCurrency(parseInt(formData.nominal))}</p>
                     <p><span className="font-medium">Tanggal:</span> {new Date(formData.tanggal).toLocaleDateString('id-ID')}</p>
                   </div>
                 </CardContent>

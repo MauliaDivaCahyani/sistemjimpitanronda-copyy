@@ -41,7 +41,6 @@ const themes = [
 export default function SettingsPage() {
   const { toast } = useToast()
   const [user, setUser] = useState<UserType | null>(null)
-  const [isDarkMode, setIsDarkMode] = useState(false)
   const [currentTheme, setCurrentTheme] = useState("green")
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [emailNotifications, setEmailNotifications] = useState(true)
@@ -68,6 +67,10 @@ export default function SettingsPage() {
   })
 
   useEffect(() => {
+    // Force remove dark mode class on mount
+    document.documentElement.classList.remove("dark")
+    console.log("🌙 Dark mode forcefully removed on page load")
+
     const savedUser = localStorage.getItem("currentUser")
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser)
@@ -79,27 +82,13 @@ export default function SettingsPage() {
         alamat: parsedUser.alamat || "",
       })
 
-      // Load tema yang disimpan PER USER - DENGAN VALIDASI
-      // Gunakan user.id yang pasti ada (bukan userId)
-      const userId = parsedUser.id
-      const userThemeKey = `appTheme_user_${userId}`
-      const savedTheme = localStorage.getItem(userThemeKey)
+      // Load tema GLOBAL (berlaku untuk semua user dan role)
+      const globalThemeKey = "appTheme_global"
+      const savedTheme = localStorage.getItem(globalThemeKey)
       const validTheme = savedTheme && themes.find(t => t.id === savedTheme) ? savedTheme : "green"
-      console.log("🎨 Loading saved theme for user", userId, "(", parsedUser.nama, "):", { savedTheme, validTheme, key: userThemeKey })
+      console.log("🎨 Loading global theme:", { savedTheme, validTheme, key: globalThemeKey })
       setCurrentTheme(validTheme)
       applyTheme(validTheme)
-
-      // Load dark mode PER USER - DENGAN VALIDASI
-      const userDarkModeKey = `darkMode_user_${userId}`
-      const savedDarkMode = localStorage.getItem(userDarkModeKey)
-      const isDark = savedDarkMode === "true"
-      console.log("🌙 Loading dark mode for user", userId, "(", parsedUser.nama, "):", { savedDarkMode, isDark, key: userDarkModeKey })
-      setIsDarkMode(isDark)
-      if (isDark) {
-        document.documentElement.classList.add("dark")
-      } else {
-        document.documentElement.classList.remove("dark")
-      }
     }
 
     // Load notification preferences
@@ -134,44 +123,16 @@ export default function SettingsPage() {
     console.log("🎨 Changing theme to:", themeId)
     setCurrentTheme(themeId)
     
-    // Simpan tema PER USER - gunakan user.id yang pasti ada
-    if (user) {
-      const userId = user.id
-      const userThemeKey = `appTheme_user_${userId}`
-      localStorage.setItem(userThemeKey, themeId)
-      console.log("🎨 Theme saved for user", userId, "(", user.nama, "):", themeId, "Key:", userThemeKey)
-    }
+    // Simpan tema GLOBAL (berlaku untuk semua user dan role)
+    const globalThemeKey = "appTheme_global"
+    localStorage.setItem(globalThemeKey, themeId)
+    console.log("🎨 Global theme saved:", themeId, "(Key:", globalThemeKey, ")")
     
     applyTheme(themeId)
     
     toast({
       title: "Tema Berhasil Diubah",
-      description: `Tema ${themes.find((t) => t.id === themeId)?.name} telah diterapkan dan disimpan.`,
-    })
-  }
-
-  const handleThemeToggle = () => {
-    const newTheme = !isDarkMode
-    console.log("🌙 Toggling dark mode:", { from: isDarkMode, to: newTheme })
-    setIsDarkMode(newTheme)
-    
-    // Simpan dark mode PER USER - gunakan user.id yang pasti ada
-    if (user) {
-      const userId = user.id
-      const userDarkModeKey = `darkMode_user_${userId}`
-      localStorage.setItem(userDarkModeKey, newTheme.toString())
-      console.log("🌙 Dark mode saved for user", userId, "(", user.nama, "):", newTheme, "Key:", userDarkModeKey)
-    }
-    
-    if (newTheme) {
-      document.documentElement.classList.add("dark")
-    } else {
-      document.documentElement.classList.remove("dark")
-    }
-    
-    toast({
-      title: newTheme ? "Mode Gelap Diaktifkan" : "Mode Terang Diaktifkan",
-      description: `Tampilan telah diubah ke mode ${newTheme ? "gelap" : "terang"} dan disimpan.`,
+      description: `Tema ${themes.find((t) => t.id === themeId)?.name} telah diterapkan untuk semua pengguna.`,
     })
   }
 
@@ -598,16 +559,6 @@ export default function SettingsPage() {
                 <CardDescription>Sesuaikan tampilan dan tema aplikasi</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-base">Mode Gelap</Label>
-                    <p className="text-sm text-muted-foreground">Gunakan tema gelap untuk mengurangi ketegangan mata</p>
-                  </div>
-                  <Switch checked={isDarkMode} onCheckedChange={handleThemeToggle} />
-                </div>
-
-                <Separator />
-
                 <div className="space-y-4">
                   <Label className="text-base">Tema Warna</Label>
                   <p className="text-sm text-muted-foreground mb-3">Pilih warna tema yang Anda suka</p>

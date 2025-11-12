@@ -9,8 +9,9 @@ export const getAllTransaksi = async (req, res) => {
       SELECT 
         t.id_transaksi AS id, 
         t.id_warga,
+        t.id_jenis_dana,
         t.id_user,
-        t.tanggal_selor,
+        t.tanggal_setor,
         t.waktu_input,
         t.nominal,
         t.status_jimpitan,
@@ -33,7 +34,7 @@ export const getAllTransaksi = async (req, res) => {
     }
     
     if (tanggal) {
-      conditions.push('DATE(t.tanggal_selor) = ?');
+      conditions.push('DATE(t.tanggal_setor) = ?');
       params.push(tanggal);
     }
     
@@ -84,7 +85,7 @@ export const createTransaksi = async (req, res) => {
       id_warga, 
       id_jenis_dana, 
       id_user, 
-      tanggal_selor, 
+      tanggal_setor, 
       nominal, 
       status_jimpitan 
     } = req.body;
@@ -93,7 +94,7 @@ export const createTransaksi = async (req, res) => {
       id_warga, 
       id_jenis_dana, 
       id_user, 
-      tanggal_selor, 
+      tanggal_setor, 
       nominal, 
       status_jimpitan 
     });
@@ -107,7 +108,7 @@ export const createTransaksi = async (req, res) => {
     }
 
     // Set default values
-    const tanggalSelor = tanggal_selor || new Date().toISOString().split('T')[0];
+    const tanggalSetor = tanggal_setor || new Date().toISOString().split('T')[0];
     const statusJimpitan = status_jimpitan || 'lunas';
 
     const [result] = await pool.query(`
@@ -115,7 +116,7 @@ export const createTransaksi = async (req, res) => {
         id_warga, 
         id_jenis_dana, 
         id_user, 
-        tanggal_selor, 
+        tanggal_setor, 
         waktu_input, 
         nominal, 
         status_jimpitan
@@ -124,7 +125,7 @@ export const createTransaksi = async (req, res) => {
       id_warga, 
       id_jenis_dana, 
       id_user, 
-      tanggalSelor, 
+      tanggalSetor, 
       nominal, 
       statusJimpitan
     ]);
@@ -147,7 +148,7 @@ export const updateTransaksi = async (req, res) => {
       id_warga, 
       id_jenis_dana, 
       id_user, 
-      tanggal_selor, 
+      tanggal_setor, 
       nominal, 
       status_jimpitan 
     } = req.body;
@@ -158,7 +159,7 @@ export const updateTransaksi = async (req, res) => {
         id_warga = ?, 
         id_jenis_dana = ?, 
         id_user = ?, 
-        tanggal_selor = ?, 
+        tanggal_setor = ?, 
         nominal = ?, 
         status_jimpitan = ?, 
         updated_at = NOW() 
@@ -167,7 +168,7 @@ export const updateTransaksi = async (req, res) => {
       id_warga, 
       id_jenis_dana, 
       id_user, 
-      tanggal_selor, 
+      tanggal_setor, 
       nominal, 
       status_jimpitan, 
       id

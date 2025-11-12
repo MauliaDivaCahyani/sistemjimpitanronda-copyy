@@ -55,10 +55,16 @@ export const getTransaksi = async (filter?: TransactionFilter): Promise<any[]> =
 
     if (filter) {
       if (filter.startDate) {
-        filteredTransaksi = filteredTransaksi.filter((t) => new Date(t.tanggal_selor) >= filter.startDate!)
+        filteredTransaksi = filteredTransaksi.filter((t) => {
+          const tanggalSetor = t.tanggal_setor || t.tanggal_selor  // Handle both field names
+          return tanggalSetor && new Date(tanggalSetor) >= filter.startDate!
+        })
       }
       if (filter.endDate) {
-        filteredTransaksi = filteredTransaksi.filter((t) => new Date(t.tanggal_selor) <= filter.endDate!)
+        filteredTransaksi = filteredTransaksi.filter((t) => {
+          const tanggalSetor = t.tanggal_setor || t.tanggal_selor  // Handle both field names
+          return tanggalSetor && new Date(tanggalSetor) <= filter.endDate!
+        })
       }
       if (filter.id_warga) {
         filteredTransaksi = filteredTransaksi.filter((t) => t.id_warga == filter.id_warga)
@@ -94,14 +100,18 @@ export const getTransactionSummary = async (filter?: TransactionFilter): Promise
     const totalNominal = transaksi.reduce((sum, t) => sum + (parseInt(t.nominal) || 0), 0)
 
     const transaksiHariIni = transaksi.filter((t) => {
-      const tanggalSelor = new Date(t.tanggal_selor)
-      return tanggalSelor.toDateString() === today.toDateString()
+      const tanggalSetor = t.tanggal_setor || t.tanggal_selor  // Handle both field names
+      if (!tanggalSetor) return false
+      const date = new Date(tanggalSetor)
+      return date.toDateString() === today.toDateString()
     })
     const totalHariIni = transaksiHariIni.reduce((sum, t) => sum + (parseInt(t.nominal) || 0), 0)
 
     const transaksiBulanIni = transaksi.filter((t) => {
-      const tanggalSelor = new Date(t.tanggal_selor)
-      return tanggalSelor >= startOfMonth
+      const tanggalSetor = t.tanggal_setor || t.tanggal_selor  // Handle both field names
+      if (!tanggalSetor) return false
+      const date = new Date(tanggalSetor)
+      return date >= startOfMonth
     })
     const totalBulanIni = transaksiBulanIni.reduce((sum, t) => sum + (parseInt(t.nominal) || 0), 0)
 
@@ -135,7 +145,7 @@ export const createTransaksi = async (data: any): Promise<any> => {
       id_warga: data.id_warga,
       id_jenis_dana: data.id_jenis_dana || data.id_jenis, // Backend expects id_jenis_dana
       id_user: data.id_user,
-      tanggal_selor: data.tanggal_selor,
+      tanggal_setor: data.tanggal_setor,
       nominal: data.nominal,
       status_jimpitan: data.status_jimpitan || "lunas"
     }

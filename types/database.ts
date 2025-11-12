@@ -66,18 +66,25 @@ export interface JenisDana {
 }
 
 export interface Transaksi {
-  id: string
-  id_warga: string
-  id_jenis: string
-  id_user: string
-  tanggal_selor: Date
-  waktu_input: Date
+  id: number | string  // Backend returns number, frontend might use string
+  id_warga: number | string
+  id_jenis?: string
+  id_jenis_dana?: number | string  // Backend uses this field name
+  id_user: number | string
+  tanggal_setor: Date | string  // Fixed typo: setor not selor
+  waktu_input: Date | string
   nominal: number
   status_jimpitan: "lunas" | "belum_lunas"
-  createdAt: Date
-  updatedAt: Date
+  created_at?: Date | string
+  updated_at?: Date | string
+  createdAt?: Date
+  updatedAt?: Date
+  // Backend JOIN fields
+  namaWarga?: string
+  nikWarga?: string
+  jenisDana?: string
+  // Relations
   warga?: Warga
-  jenisDana?: JenisDana
   petugas?: User
 }
 
