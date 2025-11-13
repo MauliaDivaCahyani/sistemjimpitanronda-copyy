@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { QrCode, User, Coins, Search } from "lucide-react"
+import { QrCode, Coins, Search } from "lucide-react"
 import { getAllWarga, getAllJenisDana } from "@/lib/database"
 import type { Warga, JenisDana } from "@/types/database"
 import { toast } from "@/hooks/use-toast"
@@ -42,9 +42,8 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
   const [searchTerm, setSearchTerm] = useState("")
   const [showWargaList, setShowWargaList] = useState(false)
   const [petugas, setPetugas] = useState<PetugasLogin | null>(null)
-  const [step, setStep] = useState<"login" | "pilih-jenis" | "input-manual" | "scan-barcode">("login")
+  const [step, setStep] = useState<"pilih-jenis" | "input-manual" | "scan-barcode">("pilih-jenis")
   const [selectedJenis, setSelectedJenis] = useState<JenisDana | null>(null)
-  const [loginData, setLoginData] = useState({ username: "", password: "" })
   const [formData, setFormData] = useState({
     selectedWarga: "",
     nominal: "",
@@ -53,18 +52,24 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
 
   useEffect(() => {
     if (isOpen) {
-      // Cek apakah sudah ada petugas yang login
-      const petugasData = localStorage.getItem("petugasLogin")
-      if (petugasData) {
-        setPetugas(JSON.parse(petugasData))
-        setStep("pilih-jenis")
-        fetchData()
-      } else {
-        setStep("login")
+      // Langsung ke pilih jenis dana tanpa perlu login petugas
+      // Ambil user yang sedang login dari localStorage
+      const currentUser = localStorage.getItem("currentUser")
+      if (currentUser) {
+        const userData = JSON.parse(currentUser)
+        setPetugas({
+          id: userData.id || userData.id_warga || "1",
+          name: userData.nama || userData.namaLengkap || "User",
+          username: userData.username || userData.nomorHp || "",
+          role: userData.role || "petugas",
+          loginTime: new Date().toISOString()
+        })
       }
+      setStep("pilih-jenis")
+      fetchData()
     } else {
       // Reset state saat dialog ditutup
-      setStep("login")
+      setStep("pilih-jenis")
       setSelectedJenis(null)
       setSearchTerm("")
       setShowWargaList(false)
@@ -111,47 +116,6 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
     }
   }
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Simulasi login sederhana
-    const validUsers = [
-      { username: "petugas1", password: "123456", name: "Ahmad Petugas", id: "1" },
-      { username: "petugas2", password: "123456", name: "Siti Petugas", id: "2" },
-      { username: "admin", password: "admin123", name: "Admin Sistem", id: "3" }
-    ]
-
-    const user = validUsers.find(u => 
-      u.username === loginData.username && u.password === loginData.password
-    )
-
-    if (user) {
-      const petugasData = {
-        id: user.id,
-        name: user.name,
-        username: user.username,
-        role: "petugas",
-        loginTime: new Date().toISOString()
-      }
-      
-      localStorage.setItem("petugasLogin", JSON.stringify(petugasData))
-      setPetugas(petugasData)
-      setStep("pilih-jenis")
-      fetchData()
-      
-      toast({
-        title: "Login Berhasil",
-        description: `Selamat datang, ${user.name}`,
-      })
-    } else {
-      toast({
-        title: "Login Gagal",
-        description: "Username atau password salah",
-        variant: "destructive",
-      })
-    }
-  }
-
   const handleSelectJenis = (jenis: JenisDana) => {
     setSelectedJenis(jenis)
     setStep("input-manual")
@@ -187,14 +151,14 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
     onSubmit({
       id_warga: formData.selectedWarga,
       id_jenis_dana: selectedJenis!.id,
-      id_user: petugas!.id,
+      id_user: petugas?.id || "1",
       nominal: nominal,
       tanggal_setor: formData.tanggal,
       status_jimpitan: "lunas",
     })
 
     // Reset form
-    setStep("login")
+    setStep("pilih-jenis")
     setSelectedJenis(null)
     setFormData({
       selectedWarga: "",
@@ -219,55 +183,13 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
 
   const renderContent = () => {
     switch (step) {
-      case "login":
-        return (
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="text-center mb-4">
-              <User className="h-12 w-12 mx-auto text-primary mb-2" />
-              <p className="text-sm text-gray-600">Login sebagai petugas untuk melakukan transaksi</p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                value={loginData.username}
-                onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
-                placeholder="Masukkan username"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={loginData.password}
-                onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                placeholder="Masukkan password"
-                required
-              />
-            </div>
-            
-            <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-              Demo: username: <code>petugas1</code>, password: <code>123456</code>
-            </div>
-            
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>Batal</Button>
-              <Button type="submit">Login</Button>
-            </DialogFooter>
-          </form>
-        )
-
       case "pilih-jenis":
         return (
           <div className="space-y-4">
             <div className="text-center mb-4">
               <Coins className="h-12 w-12 mx-auto text-primary mb-2" />
               <p className="text-sm text-gray-600">Pilih jenis dana untuk transaksi</p>
-              <p className="text-xs text-gray-500 mt-1">Petugas: {petugas?.name}</p>
+              {petugas && <p className="text-xs text-gray-500 mt-1">Petugas: {petugas.name}</p>}
             </div>
             
             <div className="space-y-3 max-h-64 overflow-y-auto">
@@ -291,7 +213,7 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
             </div>
             
             <DialogFooter>
-              <Button variant="outline" onClick={() => setStep("login")}>Kembali</Button>
+              <Button variant="outline" onClick={onClose}>Kembali</Button>
             </DialogFooter>
           </div>
         )
@@ -452,7 +374,6 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
 
   const getDialogTitle = () => {
     switch (step) {
-      case "login": return "Login Petugas"
       case "pilih-jenis": return "Pilih Jenis Dana"
       case "scan-barcode": return "Scan Barcode"
       case "input-manual": return "Input Manual Transaksi"
@@ -466,7 +387,6 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
         <DialogHeader>
           <DialogTitle>{getDialogTitle()}</DialogTitle>
           <DialogDescription>
-            {step === "login" && "Masuk sebagai petugas untuk melakukan transaksi"}
             {step === "pilih-jenis" && "Pilih jenis dana untuk transaksi"}
             {step === "scan-barcode" && "Scan barcode rumah untuk input otomatis"}
             {step === "input-manual" && "Isi data transaksi secara manual"}
