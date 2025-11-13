@@ -147,7 +147,7 @@ export function PetugasForm({ isOpen, onClose, onSubmit, initialData, mode }: Pe
     const roleMapping: Record<string, string> = {
       'petugas': 'Petugas',
       'admin': 'Admin',
-      'super_admin': 'SuperAdmin'
+      'super_admin': 'Superadmin'  // Changed to match database ENUM exactly
     }
 
     const payload = {

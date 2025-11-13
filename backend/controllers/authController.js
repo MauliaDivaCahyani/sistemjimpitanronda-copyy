@@ -36,12 +36,14 @@ export const login = async (req, res) => {
       userParams = [identifier]
     } else if (loginType === "username") {
       // Login for Petugas, Admin, Super Admin using username
+      // JOIN with warga to get nama_lengkap if id_warga exists
       userQuery = `
         SELECT p.id_petugas as id, p.username, p.password as stored_password,
-               p.role, p.status, p.jabatan,
+               p.role, p.status, p.jabatan, p.id_warga,
                p.username as identifier_field,
-               p.username as nama
+               COALESCE(w.nama_lengkap, p.username) as nama
         FROM petugas p
+        LEFT JOIN warga w ON p.id_warga = w.id_warga
         WHERE p.username = ? AND p.status = 'Aktif'
       `
       userParams = [identifier]
@@ -94,13 +96,28 @@ export const login = async (req, res) => {
       })
     }
 
-    // Generate JWT token - FIX: Normalize role to lowercase
-    const finalRole = (user.role || "petugas").toLowerCase()
+    // Generate JWT token - Map role from database to frontend format
+    // Database: 'Superadmin', 'Admin', 'Petugas', 'Warga'
+    // Frontend: 'super_admin', 'admin', 'petugas', 'warga'
+    let finalRole = "petugas"
+    const dbRole = (user.role || "Petugas")
+    
+    if (dbRole === "Superadmin") {
+      finalRole = "super_admin"
+    } else {
+      finalRole = dbRole.toLowerCase()
+    }
+
+    console.log("[AUTH] Role mapping:", { 
+      username: user.nama || user.username,
+      dbRole, 
+      finalRole 
+    })
 
     const tokenPayload = {
       id: user.id,
       nama: user.nama,
-      role: finalRole,  // Now it's 'admin' instead of 'Admin'
+      role: finalRole,  // 'super_admin', 'admin', 'petugas', or 'warga'
       identifier: user.identifier_field
     }
 

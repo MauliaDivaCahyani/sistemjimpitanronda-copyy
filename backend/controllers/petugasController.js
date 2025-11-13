@@ -13,7 +13,15 @@ export const getAllPetugas = async (req, res) => {
       LEFT JOIN kelompok_ronda kr ON p.id_kelompok_ronda = kr.id_kelompok_ronda
       ORDER BY p.id_petugas DESC
     `)
-    res.json({ success: true, data: rows })
+    
+    // Map role dari database ke format frontend
+    // Database: 'Superadmin' -> Frontend: 'super_admin'
+    const mappedRows = rows.map(row => ({
+      ...row,
+      role: row.role === 'Superadmin' ? 'super_admin' : row.role.toLowerCase()
+    }))
+    
+    res.json({ success: true, data: mappedRows })
   } catch (error) {
     res.status(500).json({ success: false, message: "Gagal mengambil data petugas", error: error.message })
   }
@@ -55,17 +63,32 @@ export const createPetugas = async (req, res) => {
 
     const status = statusUser ? "Aktif" : "Tidak Aktif"
 
-    const allowedRoles = ["SuperAdmin", "Admin", "Petugas", "Warga"]
-    const userRole = allowedRoles.includes(role) ? role : "Petugas"
+    // Map role dari frontend ke database
+    // Frontend: 'super_admin', 'admin', 'petugas', 'warga'
+    // Database: 'Superadmin', 'Admin', 'Petugas', 'Warga'
+    let dbRole = "Petugas"
+    const roleLower = (role || "").toLowerCase()
+    
+    if (roleLower === "super_admin" || role === "Superadmin" || role === "SuperAdmin") {
+      dbRole = "Superadmin"
+    } else if (roleLower === "admin" || role === "Admin") {
+      dbRole = "Admin"
+    } else if (roleLower === "petugas" || role === "Petugas") {
+      dbRole = "Petugas"
+    } else if (roleLower === "warga" || role === "Warga") {
+      dbRole = "Warga"
+    }
+
+    console.log("DEBUG CREATE PETUGAS - Role mapping:", { receivedRole: role, dbRole })
 
     const [result] = await pool.query(
       "INSERT INTO petugas (id_warga, jabatan, role, status, username, password, id_kelompok_ronda) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [idWarga, jabatan || null, userRole, status, username, password, idKelompokRonda || null]
+      [idWarga, jabatan || null, dbRole, status, username, password, idKelompokRonda || null]
     )
 
     res.status(201).json({
       success: true,
-      message: "Petugas dengan role ${userRole} berhasil ditambahkan",
+      message: `Petugas dengan role ${dbRole} berhasil ditambahkan`,
       data: { id: result.insertId },
     })
   } catch (error) {
@@ -99,18 +122,30 @@ export const updatePetugas = async (req, res) => {
 
     const status = statusUser ? "Aktif" : "Tidak Aktif"
 
-    const allowedRoles = ["SuperAdmin", "Admin", "Petugas", "Warga"]
-    const userRole = allowedRoles.includes(role) ? role : "Petugas"
+    // Map role dari frontend ke database
+    // Frontend: 'super_admin', 'admin', 'petugas', 'warga'
+    // Database: 'Superadmin', 'Admin', 'Petugas', 'Warga'
+    let dbRole = "Petugas"
+    const roleLower = (role || "").toLowerCase()
+    
+    if (roleLower === "super_admin" || role === "Superadmin" || role === "SuperAdmin") {
+      dbRole = "Superadmin"
+    } else if (roleLower === "admin" || role === "Admin") {
+      dbRole = "Admin"
+    } else if (roleLower === "petugas" || role === "Petugas") {
+      dbRole = "Petugas"
+    } else if (roleLower === "warga" || role === "Warga") {
+      dbRole = "Warga"
+    }
 
     console.log("DEBUG UPDATE PETUGAS - Role validation:", {
       receivedRole: role,
-      finalRole: userRole,
-      isAllowed: allowedRoles.includes(role)
+      dbRole
     })
 
     let updateQuery =
       "UPDATE petugas SET jabatan = ?, role = ?, status = ?, username = ?, id_kelompok_ronda = ?, updated_at = NOW()"
-    const queryParams = [jabatan || null, userRole, status, username, idKelompokRonda || null]
+    const queryParams = [jabatan || null, dbRole, status, username, idKelompokRonda || null]
 
     if (password && password.trim() !== "") {
       updateQuery += ", password = ?"
@@ -133,7 +168,7 @@ export const updatePetugas = async (req, res) => {
 
     console.log("DEBUG UPDATE PETUGAS - Success! Affected rows:", result.affectedRows)
 
-    res.json({ success: true, message: `Data petugas dengan role ${userRole} berhasil diperbarui` })
+    res.json({ success: true, message: `Data petugas dengan role ${dbRole} berhasil diperbarui` })
   } catch (error) {
     console.error("Error updating petugas:", error)
     res.status(500).json({

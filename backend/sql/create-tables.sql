@@ -54,7 +54,7 @@ CREATE TABLE petugas (
     id_warga INT,
     id_kelompok_ronda INT,
     jabatan VARCHAR(50),
-    role ENUM('Admin','Petugas','Warga') DEFAULT 'Petugas',
+    role ENUM('Superadmin','Admin','Petugas','Warga') DEFAULT 'Petugas',
     status ENUM('Aktif','Tidak Aktif') DEFAULT 'Aktif',
     username VARCHAR(50) UNIQUE,
     password VARCHAR(255),
