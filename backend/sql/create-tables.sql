@@ -32,6 +32,9 @@ CREATE TABLE warga (
     status_aktif ENUM('Aktif','Tidak Aktif') DEFAULT 'Aktif',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    password_custom VARCHAR(255),
+    email VARCHAR(100),
+    alamat TEXT,
     FOREIGN KEY (id_rumah) REFERENCES rumah(id_rumah) ON DELETE SET NULL ON UPDATE CASCADE
 );
 

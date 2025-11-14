@@ -45,90 +45,91 @@ export function WargaDashboard({ user }: WargaDashboardProps) {
       try {
         setLoading(true)
         
-        // Fetch transaksi hari ini untuk semua warga
+        // Fetch jenis dana untuk mendapatkan target
+        const jenisDanaRes = await fetch('http://localhost:5006/api/jenis-dana')
+        const jenisDanaData = await jenisDanaRes.json()
+        
+        // Ambil jenis dana pertama sebagai default (atau yang aktif)
+        let targetBulanIni = 200000 // default fallback
+        if (jenisDanaData.success && Array.isArray(jenisDanaData.data) && jenisDanaData.data.length > 0) {
+          const jenisDanaAktif = jenisDanaData.data.find((jd: any) => jd.isActive) || jenisDanaData.data[0]
+          if (jenisDanaAktif.periodeBayar === 'bulanan') {
+            targetBulanIni = parseFloat(jenisDanaAktif.nominalDefault) || 200000
+          } else if (jenisDanaAktif.periodeBayar === 'harian') {
+            // Jika harian, kalikan dengan jumlah hari dalam bulan ini
+            const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()
+            targetBulanIni = (parseFloat(jenisDanaAktif.nominalDefault) || 2000) * daysInMonth
+          }
+        }
+        
         const today = new Date().toISOString().split('T')[0]
-        const transaksiRes = await fetch(`http://localhost:5006/api/transaksi?tanggal=${today}`)
-        const transaksiData = await transaksiRes.json()
         
-        // Fetch total warga aktif
-        const wargaRes = await fetch('http://localhost:5006/api/warga')
-        const wargaData = await wargaRes.json()
-        
-        // Fetch transaksi untuk user yang login (semua transaksi)
+        // Fetch transaksi bulan ini untuk user yang login
+        const currentMonth = new Date().getMonth() + 1
+        const currentYear = new Date().getFullYear()
         const userTransaksiRes = await fetch(`http://localhost:5006/api/transaksi?id_warga=${user.id}`)
         const userTransaksiData = await userTransaksiRes.json()
         
-        // Fetch transaksi hari ini untuk user yang login (gunakan filter tanggal)
+        // Fetch transaksi hari ini untuk user yang login
         const userTodayRes = await fetch(`http://localhost:5006/api/transaksi?id_warga=${user.id}&tanggal=${today}`)
         const userTodayData = await userTodayRes.json()
         
         console.log('=== DEBUG DASHBOARD WARGA ===')
         console.log('Today:', today)
         console.log('User ID:', user.id)
+        console.log('Target Bulan Ini:', targetBulanIni)
         console.log('Transaksi hari ini user:', userTodayData)
-        
-        let totalWargaAktif = 0
-        let wargaBayarHariIni = 0
-        
-        if (wargaData.success && Array.isArray(wargaData.data)) {
-          totalWargaAktif = wargaData.data.filter((w: any) => w.statusAktif === 'Aktif').length
-        }
-        
-        if (transaksiData.success && Array.isArray(transaksiData.data)) {
-          // Hitung jumlah warga unik yang sudah bayar hari ini
-          const uniqueWarga = new Set(transaksiData.data.map((t: any) => t.id_warga))
-          wargaBayarHariIni = uniqueWarga.size
-        }
-        
-        // Status bayar: LUNAS jika semua warga aktif sudah bayar hari ini
-        const statusBayar = (totalWargaAktif > 0 && wargaBayarHariIni >= totalWargaAktif) ? 'LUNAS' : 'BELUM LUNAS'
         
         // Hitung total jimpitan bulan ini untuk user
         let totalJimpitanBulanIni = 0
         let totalTransaksiBulanIni = 0
-        let nominalTransaksiHariIni = 0
         
         if (userTransaksiData.success && Array.isArray(userTransaksiData.data)) {
-          const currentMonth = new Date().getMonth()
-          const currentYear = new Date().getFullYear()
-          
           const transaksiBulanIni = userTransaksiData.data.filter((t: any) => {
-            if (!t.tanggal_selor) return false
-            const tDate = new Date(t.tanggal_selor)
+            const tanggalSetor = t.tanggal_setor || t.tanggal_bayar
+            if (!tanggalSetor) return false
+            const tDate = new Date(tanggalSetor)
             if (isNaN(tDate.getTime())) return false
-            return tDate.getMonth() === currentMonth && 
-                   tDate.getFullYear() === currentYear &&
-                   t.status_jimpitan === 'lunas'
+            return tDate.getMonth() + 1 === currentMonth && 
+                   tDate.getFullYear() === currentYear
           })
           
           totalJimpitanBulanIni = transaksiBulanIni.reduce((sum: number, t: any) => sum + (parseFloat(t.nominal) || 0), 0)
           totalTransaksiBulanIni = transaksiBulanIni.length
+          
+          console.log('Total transaksi bulan ini:', totalTransaksiBulanIni)
+          console.log('Total nominal bulan ini:', totalJimpitanBulanIni)
         }
         
-        // Hitung nominal transaksi hari ini dari API filter tanggal
+        // Hitung nominal transaksi hari ini
+        let nominalTransaksiHariIni = 0
+        let jumlahTransaksiHariIni = 0
         if (userTodayData.success && Array.isArray(userTodayData.data)) {
-          nominalTransaksiHariIni = userTodayData.data
-            .filter((t: any) => t.status_jimpitan === 'lunas')
-            .reduce((sum: number, t: any) => sum + (parseFloat(t.nominal) || 0), 0)
+          nominalTransaksiHariIni = userTodayData.data.reduce((sum: number, t: any) => sum + (parseFloat(t.nominal) || 0), 0)
+          jumlahTransaksiHariIni = userTodayData.data.length
           
           console.log('Nominal transaksi hari ini:', nominalTransaksiHariIni)
+          console.log('Jumlah transaksi hari ini:', jumlahTransaksiHariIni)
         }
         
         // Status bayar berdasarkan warga yang login: sudah bayar hari ini = LUNAS
         const userStatusBayar = nominalTransaksiHariIni > 0 ? 'LUNAS' : 'BELUM BAYAR'
         
+        // Hitung persentase target
+        const persentaseTarget = targetBulanIni > 0 ? Math.round((totalJimpitanBulanIni / targetBulanIni) * 100) : 0
+        
         setStats({
           totalJimpitan: totalJimpitanBulanIni,
-          targetBulanIni: 200000,
-          persentaseTarget: Math.round((totalJimpitanBulanIni / 200000) * 100),
-          totalRumah: wargaData.success ? wargaData.data.length : 0,
-          rumahAktif: totalWargaAktif,
+          targetBulanIni: targetBulanIni,
+          persentaseTarget: persentaseTarget,
+          totalRumah: 0,
+          rumahAktif: 0,
           totalTransaksi: totalTransaksiBulanIni,
-          transaksiHariIni: transaksiData.success ? transaksiData.data.filter((t: any) => t.id_warga === user.id).length : 0,
+          transaksiHariIni: jumlahTransaksiHariIni,
           nominalHariIni: nominalTransaksiHariIni,
           statusBayar: userStatusBayar,
-          totalWargaHariIni: totalWargaAktif,
-          wargaBayarHariIni
+          totalWargaHariIni: 0,
+          wargaBayarHariIni: 0
         })
         
       } catch (error) {

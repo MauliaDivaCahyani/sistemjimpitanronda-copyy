@@ -25,7 +25,7 @@ export const getDashboardStats = async (req, res) => {
     const [danaHariIniRows] = await pool.query(`
       SELECT COALESCE(SUM(nominal), 0) as total 
       FROM transaksi 
-      WHERE DATE(tanggal_selor) = ?
+      WHERE DATE(tanggal_setor) = ?
     `, [today])
     const totalDanaHariIni = parseFloat(danaHariIniRows[0].total) || 0
 
@@ -35,7 +35,7 @@ export const getDashboardStats = async (req, res) => {
     const [danaBulanIniRows] = await pool.query(`
       SELECT COALESCE(SUM(nominal), 0) as total 
       FROM transaksi 
-      WHERE MONTH(tanggal_selor) = ? AND YEAR(tanggal_selor) = ?
+      WHERE MONTH(tanggal_setor) = ? AND YEAR(tanggal_setor) = ?
     `, [currentMonth, currentYear])
     const totalDanaBulanIni = parseFloat(danaBulanIniRows[0].total) || 0
 
@@ -44,7 +44,7 @@ export const getDashboardStats = async (req, res) => {
     const [wargaBayarRows] = await pool.query(`
       SELECT COUNT(DISTINCT id_warga) as total
       FROM transaksi
-      WHERE MONTH(tanggal_selor) = ? AND YEAR(tanggal_selor) = ?
+      WHERE MONTH(tanggal_setor) = ? AND YEAR(tanggal_setor) = ?
     `, [currentMonth, currentYear])
     const wargaSudahBayar = wargaBayarRows[0].total
 
@@ -56,7 +56,7 @@ export const getDashboardStats = async (req, res) => {
     const [transaksiHariIniRows] = await pool.query(`
       SELECT COUNT(*) as total
       FROM transaksi
-      WHERE DATE(tanggal_selor) = ?
+      WHERE DATE(tanggal_setor) = ?
     `, [today])
     const transaksiHariIni = transaksiHariIniRows[0].total
 
