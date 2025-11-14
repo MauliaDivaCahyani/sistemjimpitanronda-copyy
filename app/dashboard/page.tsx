@@ -506,44 +506,40 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Statistik Pembayaran</CardTitle>
-            <CardDescription>Status pembayaran warga bulan ini</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Statistik Pembayaran</CardTitle>
+          <CardDescription>Status pembayaran warga bulan ini</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span>Sudah Bayar</span>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-20 bg-primary/30 rounded-full">
-                    <div 
-                      className="h-2 bg-primary rounded-full" 
-                      style={{ width: `${paymentStats.persenSudahBayar}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-sm">{paymentStats.persenSudahBayar}%</span>
-                  <span className="text-xs text-muted-foreground">({paymentStats.sudahBayar} warga)</span>
-                </div>
+                <span className="text-sm font-medium">Sudah Bayar</span>
+                <span className="text-sm font-medium">{paymentStats.persenSudahBayar}% ({paymentStats.sudahBayar} warga)</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span>Belum Bayar</span>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-20 bg-red-200 rounded-full">
-                    <div 
-                      className="h-2 bg-red-500 rounded-full" 
-                      style={{ width: `${paymentStats.persenBelumBayar}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-sm">{paymentStats.persenBelumBayar}%</span>
-                  <span className="text-xs text-muted-foreground">({paymentStats.belumBayar} warga)</span>
-                </div>
+              <div className="h-3 w-full bg-primary/20 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary rounded-full transition-all duration-500" 
+                  style={{ width: `${paymentStats.persenSudahBayar}%` }}
+                ></div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Belum Bayar</span>
+                <span className="text-sm font-medium">{paymentStats.persenBelumBayar}% ({paymentStats.belumBayar} warga)</span>
+              </div>
+              <div className="h-3 w-full bg-red-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-red-500 rounded-full transition-all duration-500" 
+                  style={{ width: `${paymentStats.persenBelumBayar}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 
