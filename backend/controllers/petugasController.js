@@ -1,5 +1,11 @@
 // backend/controllers/petugasController.js
 import { pool } from "../config/database.js"
+import crypto from "crypto"
+
+// Helper: Hash password with MD5
+const hashPasswordMD5 = (password) => {
+  return crypto.createHash('md5').update(password).digest('hex')
+}
 
 export const getAllPetugas = async (req, res) => {
   try {
@@ -63,9 +69,6 @@ export const createPetugas = async (req, res) => {
 
     const status = statusUser ? "Aktif" : "Tidak Aktif"
 
-    // Map role dari frontend ke database
-    // Frontend: 'super_admin', 'admin', 'petugas', 'warga'
-    // Database: 'Superadmin', 'Admin', 'Petugas', 'Warga'
     let dbRole = "Petugas"
     const roleLower = (role || "").toLowerCase()
     
@@ -81,9 +84,12 @@ export const createPetugas = async (req, res) => {
 
     console.log("DEBUG CREATE PETUGAS - Role mapping:", { receivedRole: role, dbRole })
 
+    // Hash password dengan MD5
+    const hashedPassword = hashPasswordMD5(password)
+
     const [result] = await pool.query(
       "INSERT INTO petugas (id_warga, jabatan, role, status, username, password, id_kelompok_ronda) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [idWarga, jabatan || null, dbRole, status, username, password, idKelompokRonda || null]
+      [idWarga, jabatan || null, dbRole, status, username, hashedPassword, idKelompokRonda || null]
     )
 
     res.status(201).json({
@@ -97,10 +103,9 @@ export const createPetugas = async (req, res) => {
       success: false,
       message: "Gagal menambahkan petugas",
       error: error.message,
-})
+    })
+  }
 }
-}
-
 
 export const updatePetugas = async (req, res) => {
   try {
@@ -122,9 +127,6 @@ export const updatePetugas = async (req, res) => {
 
     const status = statusUser ? "Aktif" : "Tidak Aktif"
 
-    // Map role dari frontend ke database
-    // Frontend: 'super_admin', 'admin', 'petugas', 'warga'
-    // Database: 'Superadmin', 'Admin', 'Petugas', 'Warga'
     let dbRole = "Petugas"
     const roleLower = (role || "").toLowerCase()
     
@@ -148,8 +150,10 @@ export const updatePetugas = async (req, res) => {
     const queryParams = [jabatan || null, dbRole, status, username, idKelompokRonda || null]
 
     if (password && password.trim() !== "") {
+      // Hash password dengan MD5 jika ada perubahan
+      const hashedPassword = hashPasswordMD5(password)
       updateQuery += ", password = ?"
-      queryParams.push(password)
+      queryParams.push(hashedPassword)
     }
 
     updateQuery += " WHERE id_petugas = ?"

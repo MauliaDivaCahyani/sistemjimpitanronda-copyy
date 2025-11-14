@@ -1,9 +1,15 @@
 // backend/controllers/authController.js
 import { pool } from "../config/database.js"
 import jwt from "jsonwebtoken"
+import crypto from "crypto"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-this-in-production"
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h"
+
+// Helper: Hash password with MD5
+const hashPasswordMD5 = (password) => {
+  return crypto.createHash('md5').update(password).digest('hex')
+}
 
 // Login function for both username and phone number
 export const login = async (req, res) => {
@@ -72,20 +78,20 @@ export const login = async (req, res) => {
       jabatan: user.jabatan
     })
 
-    // Password verification
+    // Password verification dengan MD5
     let isPasswordValid = false
 
     if (loginType === "phone") {
       // For warga, check password_custom first, if null use default "1234"
       const wargaPassword = user.password_custom || "1234"
-      isPasswordValid = password === wargaPassword
+      const hashedInput = hashPasswordMD5(password)
+      isPasswordValid = hashedInput === wargaPassword
       console.log("[AUTH] Warga password check:", { hasCustomPassword: !!user.password_custom })
     } else {
-      // For petugas/admin/superadmin, compare with stored password
-      if (user.stored_password) {
-        // Simple text comparison for now (in production, use bcrypt)
-        isPasswordValid = password === user.stored_password
-      }
+      // Hash password input dan compare dengan stored password
+      const hashedInput = hashPasswordMD5(password)
+      isPasswordValid = hashedInput === user.stored_password
+      console.log("[AUTH] Petugas MD5 password check:", { hashedInput: hashedInput.substring(0, 8) + "..." })
     }
 
     if (!isPasswordValid) {
