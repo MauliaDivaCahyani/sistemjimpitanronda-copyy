@@ -25,25 +25,37 @@ export function BarcodeGenerator({ rumah }: BarcodeGeneratorProps) {
   const handleGenerateBarcode = async (rumahData: Rumah) => {
     setIsSaving(true)
     try {
-      const barcodeData = generateBarcodeData(rumahData.id, rumahData.alamat)
-      const url = generateBarcodeUrl(barcodeData)
-
-      await updateRumah(rumahData.id, {
-        alamat: rumahData.alamat,
-        rt: rumahData.rt,
-        rw: rumahData.rw,
-        kodeBarcode: barcodeData,
-      })
+      // Cek apakah rumah sudah punya barcode
+      let barcodeData = rumahData.kodeBarcode
       
-
+      // Jika belum ada barcode, generate baru
+      if (!barcodeData || barcodeData.trim() === "") {
+        barcodeData = generateBarcodeData(rumahData.id, rumahData.alamat)
+        
+        // Simpan barcode baru ke database
+        await updateRumah(rumahData.id, {
+          alamat: rumahData.alamat,
+          rt: rumahData.rt,
+          rw: rumahData.rw,
+          kodeBarcode: barcodeData,
+        })
+        
+        toast({
+          title: "Berhasil",
+          description: "Barcode baru berhasil di-generate dan disimpan",
+        })
+      } else {
+        toast({
+          title: "Info",
+          description: "Menggunakan barcode yang sudah ada",
+        })
+      }
+      
+      const url = generateBarcodeUrl(barcodeData)
       setSelectedRumah(rumahData)
       setGeneratedBarcode(barcodeData)
       setBarcodeUrl(url)
-
-      toast({
-        title: "Berhasil",
-        description: "Barcode berhasil di-generate dan disimpan",
-      })
+      
     } catch (error) {
       console.error("Error generating barcode:", error)
       toast({
@@ -136,8 +148,14 @@ export function BarcodeGenerator({ rumah }: BarcodeGeneratorProps) {
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">Kode: {r.kodeBarcode || "Belum di-generate"}</p>
-                    <Button onClick={() => handleGenerateBarcode(r)} className="w-full" size="sm" disabled={isSaving}>
-                      {isSaving ? "Generating..." : "Generate Barcode"}
+                    <Button 
+                      onClick={() => handleGenerateBarcode(r)} 
+                      className="w-full" 
+                      size="sm" 
+                      disabled={isSaving}
+                      variant={r.kodeBarcode ? "outline" : "default"}
+                    >
+                      {isSaving ? "Loading..." : (r.kodeBarcode ? "Lihat Barcode" : "Generate Barcode")}
                     </Button>
                   </div>
                 </CardContent>

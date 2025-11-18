@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import { Eye, EyeOff } from "lucide-react"
 import { getAllWarga, getAllKelompokRonda } from "@/lib/database"
 import type { User, Warga, KelompokRonda } from "@/types/database"
 import { toast } from "@/hooks/use-toast"
@@ -30,6 +31,7 @@ interface PetugasFormProps {
 export function PetugasForm({ isOpen, onClose, onSubmit, initialData, mode }: PetugasFormProps) {
   const [wargaList, setWargaList] = useState<Warga[]>([])
   const [kelompokRondaList, setKelompokRondaList] = useState<KelompokRonda[]>([])
+  const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     idWarga: "",
     idKelompokRonda: "",
@@ -250,14 +252,25 @@ export function PetugasForm({ isOpen, onClose, onSubmit, initialData, mode }: Pe
             <Label htmlFor="password">
               Password {mode === "create" ? "*" : "(kosongkan jika tidak ingin mengubah)"} (Contoh: pass123)
             </Label>
-            <Input
-              id="password"
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder={mode === "create" ? "Masukkan password" : "Kosongkan jika tidak ingin mengubah"}
-              required={mode === "create"}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder={mode === "create" ? "Masukkan password" : "Kosongkan jika tidak ingin mengubah"}
+                required={mode === "create"}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
 
           {/* Jabatan */}

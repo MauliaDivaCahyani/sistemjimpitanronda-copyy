@@ -1,7 +1,17 @@
 export const generateBarcodeData = (rumahId: string, alamat: string): string => {
-  const timestamp = Date.now().toString(36)
-const houseCode = rumahId.toString().padStart(3, "0")
-  return `RMH${houseCode}${timestamp.slice(-4)}`
+  // Generate barcode tetap berdasarkan ID rumah saja (tanpa timestamp)
+  // Format: RMH + 3 digit ID + 4 karakter hash dari alamat
+  const houseCode = rumahId.toString().padStart(3, "0")
+  
+  // Buat hash sederhana dari alamat untuk uniqueness
+  let hash = 0
+  for (let i = 0; i < alamat.length; i++) {
+    hash = ((hash << 5) - hash) + alamat.charCodeAt(i)
+    hash = hash & hash // Convert to 32bit integer
+  }
+  const hashStr = Math.abs(hash).toString(36).substring(0, 4).toUpperCase().padEnd(4, '0')
+  
+  return `RMH${houseCode}${hashStr}`
 }
 
 export const generateBarcodeUrl = (data: string): string => {
