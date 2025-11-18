@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,9 +10,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { authenticateUser } from "@/lib/auth"
 import type { User } from "@/types/auth"
 import { Eye, EyeOff, Loader2, Phone, UserIcon } from "lucide-react"
+import Image from "next/image"
 
 interface LoginFormProps {
   onLogin: (user: User) => void
+}
+
+const themeColors: Record<string, string> = {
+  green: "#4caf50",
+  blue: "#2196f3",
+  purple: "#9c27b0",
 }
 
 export function LoginForm({ onLogin }: LoginFormProps) {
@@ -21,6 +27,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   const [error, setError] = useState("")
   const [showPhonePassword, setShowPhonePassword] = useState(false)
   const [showUsernamePassword, setShowUsernamePassword] = useState(false)
+  const [currentTheme, setCurrentTheme] = useState<string>("green")
 
   const [phoneLogin, setPhoneLogin] = useState({
     nomorHp: "",
@@ -31,6 +38,13 @@ export function LoginForm({ onLogin }: LoginFormProps) {
     username: "",
     password: "",
   })
+
+  useEffect(() => {
+    // Load tema dari localStorage
+    const savedTheme = localStorage.getItem("appTheme_global")
+    const validTheme = savedTheme && themeColors[savedTheme] ? savedTheme : "green"
+    setCurrentTheme(validTheme)
+  }, [])
 
   const handlePhoneLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,7 +57,6 @@ export function LoginForm({ onLogin }: LoginFormProps) {
         onLogin(user)
       }
     } catch (err) {
-      // Tampilkan pesan error spesifik dari backend
       if (err instanceof Error) {
         setError(err.message)
       } else {
@@ -66,7 +79,6 @@ export function LoginForm({ onLogin }: LoginFormProps) {
         onLogin(user)
       }
     } catch (err) {
-      // Tampilkan pesan error spesifik dari backend
       if (err instanceof Error) {
         setError(err.message)
       } else {
@@ -78,15 +90,29 @@ export function LoginForm({ onLogin }: LoginFormProps) {
     }
   }
 
+  const themeColor = themeColors[currentTheme] || themeColors.green
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-            <span className="text-2xl font-bold text-primary-foreground">DW</span>
+          <div
+            className="mx-auto mb-0 flex h-20 w-20 items-center justify-center rounded-lg"
+            style={{ backgroundColor: themeColor + "20", borderColor: themeColor, borderWidth: "2px" }}
+          >
+            <Image
+              src="/kesorga-logo.svg"
+              alt="KeSorga Logo"
+              width={100}
+              height={100}
+              priority
+              style={{
+                filter: `hue-rotate(${currentTheme === "green" ? 0 : currentTheme === "blue" ? 190 : 270}deg)`,
+              }}
+            />
           </div>
-          <CardTitle className="text-2xl font-bold">Dana Warga</CardTitle>
-          <CardDescription>Sistem Informasi Manajemen Pengumpulan Dana Warga</CardDescription>
+          <CardTitle className="text-2xl font-bold mt-2">KeSorga</CardTitle>
+          <CardDescription className="text-base">Kegiatan Sosial Infaq Keluarga</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="warga" className="w-full">
@@ -135,7 +161,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                   </div>
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full" disabled={isLoading} style={{ backgroundColor: themeColor }}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Masuk sebagai Warga
                 </Button>
@@ -176,7 +202,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                   </div>
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full" disabled={isLoading} style={{ backgroundColor: themeColor }}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Masuk sebagai Petugas/Admin
                 </Button>

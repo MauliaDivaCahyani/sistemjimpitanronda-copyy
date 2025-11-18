@@ -10,8 +10,8 @@ import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Dana Warga - Management System",
-  description: "Sistem Informasi Manajemen Pengumpulan Dana Warga",
+  title: "KeSorga - Management System",
+  description: "Kegiatan Sosial Infaq Keluarga",
   generator: "v0.app",
 }
 

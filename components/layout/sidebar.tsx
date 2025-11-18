@@ -4,6 +4,7 @@ import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -125,13 +126,30 @@ export function Sidebar({ user, onLogout, onRoleSwitch }: SidebarProps) {
       <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <span className="text-sm font-bold text-primary-foreground">DW</span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg">
+              <Image
+                src="/kesorga-logo.svg"
+                alt="KeSorga Logo"
+                width={40}
+                height={40}
+                priority
+              />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-sidebar-foreground">Dana Warga</h2>
+              <h2 className="text-lg font-bold text-sidebar-foreground">KeSorga</h2>
               <p className="text-xs text-muted-foreground">Management System</p>
             </div>
+          </div>
+        )}
+        {collapsed && (
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg">
+            <Image
+              src="/images/kesorga-logo.svg"
+              alt="KeSorga Logo"
+              width={40}
+              height={40}
+              priority
+            />
           </div>
         )}
         <Button
