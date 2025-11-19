@@ -40,16 +40,26 @@ export const getDashboardStats = async (req, res) => {
     const totalDanaBulanIni = parseFloat(danaBulanIniRows[0].total) || 0
 
     // Get statistik pembayaran bulan ini
-    // Hitung berapa warga yang sudah bayar bulan ini
-    const [wargaBayarRows] = await pool.query(`
-      SELECT COUNT(DISTINCT id_warga) as total
-      FROM transaksi
-      WHERE MONTH(tanggal_setor) = ? AND YEAR(tanggal_setor) = ?
+    // Hitung berdasarkan KEPALA KELUARGA (per rumah), bukan total warga
+    // Karena transaksi dihitung per rumah (1 rumah = 1 kepala keluarga)
+    
+    // Hitung total kepala keluarga (total rumah)
+    const totalKepalaKeluarga = totalRumah
+    
+    // Hitung berapa kepala keluarga yang sudah bayar bulan ini
+    const [kepalaKeluargaBayarRows] = await pool.query(`
+      SELECT COUNT(DISTINCT w.id_warga) as total
+      FROM transaksi t
+      INNER JOIN warga w ON t.id_warga = w.id_warga
+      INNER JOIN rumah r ON w.id_rumah = r.id_rumah
+      WHERE w.id_warga = r.id_kepala_keluarga
+        AND MONTH(t.tanggal_setor) = ? 
+        AND YEAR(t.tanggal_setor) = ?
     `, [currentMonth, currentYear])
-    const wargaSudahBayar = wargaBayarRows[0].total
+    const kepalaKeluargaSudahBayar = kepalaKeluargaBayarRows[0].total
 
-    // Hitung persentase
-    const persenSudahBayar = totalWarga > 0 ? Math.round((wargaSudahBayar / totalWarga) * 100) : 0
+    // Hitung persentase berdasarkan kepala keluarga
+    const persenSudahBayar = totalKepalaKeluarga > 0 ? Math.round((kepalaKeluargaSudahBayar / totalKepalaKeluarga) * 100) : 0
     const persenBelumBayar = 100 - persenSudahBayar
 
     // Get transaksi hari ini
@@ -65,7 +75,8 @@ export const getDashboardStats = async (req, res) => {
       totalRumah,
       totalDanaHariIni,
       totalDanaBulanIni,
-      wargaSudahBayar,
+      totalKepalaKeluarga,
+      kepalaKeluargaSudahBayar,
       persenSudahBayar,
       persenBelumBayar,
       transaksiHariIni
@@ -79,8 +90,8 @@ export const getDashboardStats = async (req, res) => {
         totalDanaHariIni,
         totalDanaBulanIni,
         statistikPembayaran: {
-          sudahBayar: wargaSudahBayar,
-          belumBayar: totalWarga - wargaSudahBayar,
+          sudahBayar: kepalaKeluargaSudahBayar,
+          belumBayar: totalKepalaKeluarga - kepalaKeluargaSudahBayar,
           persenSudahBayar,
           persenBelumBayar
         },

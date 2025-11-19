@@ -275,12 +275,16 @@ export function AttendanceTracker({ user }: AttendanceTrackerProps) {
       
       console.log('=== SAVING ATTENDANCE ===')
       console.log('Valid petugas to save:', validPetugas.length)
+      console.log('Selected statuses:', selectedStatuses)
       
       await Promise.all(
         validPetugas.map((p) => {
           const status = selectedStatuses[p.id]
           const checkInTime = checkInTimes[p.id]
-          console.log(`Saving attendance for ${p.namaLengkap}: status=${status}, id_warga=${p.id_warga}`)
+          console.log(`[SAVE] Petugas: ${p.namaLengkap}`)
+          console.log(`[SAVE]   - id_warga: ${p.id_warga}`)
+          console.log(`[SAVE]   - status: "${status}" (type: ${typeof status})`)
+          console.log(`[SAVE]   - checkInTime:`, checkInTime)
           // Gunakan id_warga dari petugas untuk presensi
           return markAttendance(p.id_warga!, status, user.id, checkInTime)
         }),

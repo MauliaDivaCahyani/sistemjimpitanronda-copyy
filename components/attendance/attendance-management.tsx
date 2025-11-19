@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon, Users, Filter, Search } from "lucide-react"
+import { CalendarIcon, Users, Filter, Search, RefreshCw } from "lucide-react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -31,42 +31,69 @@ export function AttendanceManagement({ currentUser }: AttendanceManagementProps)
   const [petugas, setPetugas] = useState<Petugas[]>([])
   const [summary, setSummary] = useState<AttendanceSummary | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState("")
   const [filter, setFilter] = useState<AttendanceFilter>({
     startDate: new Date(),
-    endDate: new Date(),
+    endDate: (() => {
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      return tomorrow
+    })(),
   })
   const [searchTerm, setSearchTerm] = useState("")
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [presensiData, wargaData, petugasData, summaryData] = await Promise.all([
-          getPresensi(filter),
-          getAllWarga(),
-          getAllPetugas(),
-          getAttendanceSummary(filter),
-        ])
+  const fetchData = async (showLoading = true) => {
+    if (showLoading) setLoading(true)
+    else setRefreshing(true)
+    
+    try {
+      console.log('[AttendanceManagement] Fetching with filter:', {
+        startDate: filter.startDate?.toISOString(),
+        endDate: filter.endDate?.toISOString()
+      })
+      
+      const [presensiData, wargaData, petugasData, summaryData] = await Promise.all([
+        getPresensi(filter),
+        getAllWarga(),
+        getAllPetugas(),
+        getAttendanceSummary(filter),
+      ])
 
-        console.log('AttendanceManagement - Loaded presensi:', presensiData.map(p => ({ 
-          id: p.id, 
-          id_warga: p.id_warga, 
-          status: p.status,
-          tanggal: p.tanggal 
-        })))
+      console.log('[AttendanceManagement] Loaded presensi:', presensiData.length, 'records')
+      console.log('[AttendanceManagement] Presensi details:', presensiData.map(p => ({ 
+        id: p.id, 
+        id_warga: p.id_warga, 
+        status: p.status,
+        tanggal: p.tanggal,
+        check_in: p.check_in
+      })))
 
-        setPresensi(presensiData)
-        setWarga(wargaData.filter((w) => w.statusAktif))
-        setPetugas(petugasData.filter((p) => p.status === "Aktif"))
-        setSummary(summaryData)
-      } catch {
-        setError("Gagal memuat data absensi")
-      } finally {
-        setLoading(false)
-      }
+      setPresensi(presensiData)
+      setWarga(wargaData.filter((w) => w.statusAktif))
+      setPetugas(petugasData.filter((p) => p.status === "Aktif"))
+      setSummary(summaryData)
+      setError("")
+    } catch (err) {
+      console.error('[AttendanceManagement] Error:', err)
+      setError("Gagal memuat data absensi")
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
     }
+  }
 
+  useEffect(() => {
     fetchData()
+  }, [filter])
+
+  // Auto refresh setiap 10 detik
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchData(false)
+    }, 10000)
+    
+    return () => clearInterval(interval)
   }, [filter])
 
   const handleFilterChange = (newFilter: Partial<AttendanceFilter>) => {
@@ -180,11 +207,24 @@ export function AttendanceManagement({ currentUser }: AttendanceManagementProps)
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filter Absensi
-          </CardTitle>
-          <CardDescription>Gunakan filter untuk menampilkan data kehadiran petugas</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filter Absensi
+              </CardTitle>
+              <CardDescription>Gunakan filter untuk menampilkan data kehadiran petugas</CardDescription>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => fetchData(false)}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
@@ -243,6 +283,69 @@ export function AttendanceManagement({ currentUser }: AttendanceManagementProps)
           </div>
         </CardContent>
       </Card>
+
+      {/* Daftar Absensi Petugas Ronda */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            Daftar Absensi Petugas Ronda
+            {refreshing && <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />}
+          </CardTitle>
+          <CardDescription>
+            Menampilkan {filteredPresensi.length} petugas yang terjadwal ronda pada hari {getDayName(filter.startDate || new Date())}
+            {refreshing && " • Memperbarui data..."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-700">
+              {error}
+            </div>
+          )}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Petugas</TableHead>
+                  <TableHead>Check-in</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredPresensi.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                      {loading ? "Memuat data..." : "Belum ada data absensi untuk tanggal yang dipilih"}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredPresensi.map((presensi) => (
+                    <TableRow key={presensi.id}>
+                      <TableCell className="font-medium">
+                        {getWargaName(presensi.id_warga)}
+                      </TableCell>
+                      <TableCell>
+                        {presensi.check_in 
+                          ? format(new Date(presensi.check_in), "HH:mm:ss", { locale: id })
+                          : "-"
+                        }
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(presensi.status)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
+}
+
+function getDayName(date: Date) {
+  const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"]
+  return days[date.getDay()]
 }

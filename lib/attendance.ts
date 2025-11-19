@@ -1,5 +1,5 @@
 import type { Presensi } from "@/types/database"
-import { createPresensi, updatePresensi, getTodayPresensi } from "@/lib/database"
+import { createPresensi, updatePresensi, getTodayPresensi, getPresensiByDateRange } from "@/lib/database"
 
 // Mock attendance data (untuk fallback jika API tidak tersedia)
 const mockPresensi: Presensi[] = [
@@ -86,17 +86,27 @@ const mapStatusToBackend = (status: "hadir" | "izin" | "sakit" | "alpha"): strin
 // Get attendance records with filters
 export const getPresensi = async (filter?: AttendanceFilter): Promise<Presensi[]> => {
   try {
-    const todayPresensi = await getTodayPresensi()
+    let presensiData: Presensi[]
+    
+    // Jika ada filter tanggal, gunakan getPresensiByDateRange
+    if (filter?.startDate && filter?.endDate) {
+      console.log('[getPresensi] Using date range filter:', {
+        startDate: filter.startDate.toISOString(),
+        endDate: filter.endDate.toISOString()
+      })
+      presensiData = await getPresensiByDateRange(filter.startDate, filter.endDate)
+    } else {
+      // Jika tidak ada filter, ambil data hari ini saja
+      console.log('[getPresensi] No date filter, using today')
+      presensiData = await getTodayPresensi()
+    }
 
-    let filteredPresensi = [...todayPresensi]
+    console.log(`[getPresensi] Received ${presensiData.length} records from backend`)
 
+    let filteredPresensi = [...presensiData]
+
+    // Filter tambahan jika ada
     if (filter) {
-      if (filter.startDate) {
-        filteredPresensi = filteredPresensi.filter((p) => new Date(p.tanggal) >= filter.startDate!)
-      }
-      if (filter.endDate) {
-        filteredPresensi = filteredPresensi.filter((p) => new Date(p.tanggal) <= filter.endDate!)
-      }
       if (filter.id_user) {
         filteredPresensi = filteredPresensi.filter((p) => p.id_user === filter.id_user)
       }
@@ -105,9 +115,10 @@ export const getPresensi = async (filter?: AttendanceFilter): Promise<Presensi[]
       }
     }
 
+    console.log(`[getPresensi] Returning ${filteredPresensi.length} filtered records`)
     return filteredPresensi.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
   } catch (error) {
-    console.error("Error fetching attendance from backend:", error)
+    console.error("[getPresensi] Error fetching attendance from backend:", error)
     // Fallback to mock data
     let filteredPresensi = [...mockPresensi]
 

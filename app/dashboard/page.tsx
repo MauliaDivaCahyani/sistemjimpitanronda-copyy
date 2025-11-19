@@ -516,7 +516,7 @@ export default function DashboardPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Sudah Bayar</span>
-                <span className="text-sm font-medium">{paymentStats.persenSudahBayar}% ({paymentStats.sudahBayar} warga)</span>
+                <span className="text-sm font-medium">{paymentStats.persenSudahBayar}% ({paymentStats.sudahBayar} rumah)</span>
               </div>
               <div className="h-3 w-full bg-primary/20 rounded-full overflow-hidden">
                 <div 
@@ -528,7 +528,7 @@ export default function DashboardPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Belum Bayar</span>
-                <span className="text-sm font-medium">{paymentStats.persenBelumBayar}% ({paymentStats.belumBayar} warga)</span>
+                <span className="text-sm font-medium">{paymentStats.persenBelumBayar}% ({paymentStats.belumBayar} rumah)</span>
               </div>
               <div className="h-3 w-full bg-red-100 rounded-full overflow-hidden">
                 <div 

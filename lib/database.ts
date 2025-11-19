@@ -353,6 +353,19 @@ export async function getTodayPresensi(): Promise<Presensi[]> {
   return apiRequest<Presensi[]>(`presensi?startDate=${todayStr}&endDate=${tomorrowStr}`)
 }
 
+export async function getPresensiByDateRange(startDate: Date, endDate: Date): Promise<Presensi[]> {
+  // Format tanggal ke YYYY-MM-DD untuk backend
+  const startStr = startDate.toISOString().split('T')[0]
+  const endStr = endDate.toISOString().split('T')[0]
+  
+  console.log(`[getPresensiByDateRange] Fetching: startDate=${startStr}, endDate=${endStr}`)
+  
+  const result = await apiRequest<Presensi[]>(`presensi?startDate=${startStr}&endDate=${endStr}`)
+  console.log(`[getPresensiByDateRange] Received ${result.length} records`)
+  
+  return result
+}
+
 // Alias agar tetap bisa pakai nama pendek
 export const getWarga = getAllWarga
 export const getJenisDana = getAllJenisDana
