@@ -23,6 +23,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Settings,
+  Banknote,
 } from "lucide-react"
 import type { User, UserRole } from "@/types/auth"
 
@@ -49,7 +50,7 @@ export const menuItems: MenuItem[] = [
   {
     title: "Data Transaksi",
     href: "/data-transaksi",
-    icon: Receipt,
+    icon: Banknote,
     roles: ["warga"],
   },
   {
@@ -85,7 +86,7 @@ export const menuItems: MenuItem[] = [
   {
     title: "Transaksi Dana",
     href: "/transaksi-dana",
-    icon: Receipt,
+    icon: Banknote,
     roles: ["admin", "super_admin", "petugas"],
   },
   {

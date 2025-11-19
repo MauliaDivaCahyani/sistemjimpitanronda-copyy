@@ -13,7 +13,7 @@ import {
   Users,
   UserCheck,
   Building,
-  DollarSign,
+  Banknote,
   Heart,
   FileText,
   Menu,
@@ -352,7 +352,7 @@ export function Header({ title, subtitle, onOpenMenu, userRole }: HeaderProps) {
       case "rumah":
         return <Building className="h-4 w-4 text-purple-500" />
       case "transaksi":
-        return <DollarSign className="h-4 w-4 text-yellow-500" />
+        return <Banknote className="h-4 w-4 text-yellow-500" />
       case "kampanye":
         return <Heart className="h-4 w-4 text-red-500" />
       case "laporan":
