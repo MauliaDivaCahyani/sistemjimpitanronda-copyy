@@ -78,7 +78,7 @@ CREATE TABLE presensi (
     check_in DATETIME,
     check_out DATETIME,
     keterangan TEXT,
-    status ENUM('Hadir','Tidak Hadir','Izin','Sakit','Alpha') DEFAULT 'Hadir',
+    status ENUM('Hadir','Izin','Sakit','Alpha') DEFAULT 'Hadir',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     id_petugas INT,

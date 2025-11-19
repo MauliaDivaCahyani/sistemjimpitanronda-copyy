@@ -5,10 +5,12 @@ import {
   createLaporan,
   updateLaporan,
   deleteLaporan,
+  generateLaporan,
 } from "../controllers/laporanController.js";
 
 const router = express.Router();
 
+router.get("/generate", generateLaporan);
 router.get("/", getAllLaporan);
 router.get("/:id", getLaporanById);
 router.post("/", createLaporan);
