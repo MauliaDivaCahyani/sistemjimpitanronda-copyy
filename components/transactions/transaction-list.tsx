@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,6 +22,7 @@ import { ManualTransactionForm } from "./manual-transaction-form"
 import { toast } from "@/hooks/use-toast"
 
 export function TransactionList() {
+  const router = useRouter()
   const [transaksi, setTransaksi] = useState<Transaksi[]>([])
   const [warga, setWarga] = useState<Warga[]>([])
   const [jenisDana, setJenisDana] = useState<JenisDana[]>([])

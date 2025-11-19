@@ -17,7 +17,7 @@ import {
   Search
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
-import { getAllWarga } from "@/lib/database"
+import { getKepalaKeluarga } from "@/lib/database"
 import { createTransaksi } from "@/lib/transactions"
 import type { Warga, JenisDana } from "@/types/database"
 
@@ -98,16 +98,51 @@ export default function InputManualPage() {
   const fetchWarga = async () => {
     try {
       setLoading(true)
-      const data = await getAllWarga()
-      // Filter hanya warga yang aktif
+      // UPDATED: Ambil HANYA kepala keluarga untuk input transaksi per rumah
+      console.log("📍 [v3] Fetching KEPALA KELUARGA only - NOT all warga...")
+      
+      // Direct fetch dengan cache busting - FORCE NO CACHE
+      const timestamp = Date.now() + Math.random()
+      const response = await fetch(`http://localhost:5006/api/warga/kepala-keluarga?_nocache=${timestamp}`, {
+        method: 'GET',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
+        cache: 'no-store'
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+      
+      const result = await response.json()
+      const data = result.data || []
+      
+      console.log("🔍 [v3] Data yang di-fetch dari API:", data)
+      console.log("📊 [v3] TOTAL KEPALA KELUARGA:", data.length)
+      console.log("📋 [v3] Daftar nama:", data.map((w: any) => w.namaLengkap).join(", "))
+      
+      // Filter hanya warga yang aktif (sudah difilter di backend, tapi double check)
       const activeWarga = data.filter((w: Warga) => w.statusAktif === "Aktif")
+      console.log("✅ [v3] Kepala Keluarga Aktif yang akan ditampilkan:", activeWarga.length)
+      
       setWargaList(activeWarga)
       setFilteredWarga(activeWarga)
+      
+      // Alert untuk memastikan user tahu data sudah diload
+      if (activeWarga.length === 4) {
+        console.log("✅✅✅ SUKSES! Hanya 4 kepala keluarga yang diload!")
+      } else {
+        console.warn(`⚠️ WARNING: Expected 4, got ${activeWarga.length}`)
+      }
     } catch (error) {
-      console.error("Error fetching warga:", error)
+      console.error("❌ Error fetching kepala keluarga:", error)
       toast({
         title: "Error",
-        description: "Gagal memuat data warga",
+        description: "Gagal memuat data kepala keluarga",
         variant: "destructive",
       })
     } finally {
@@ -240,9 +275,14 @@ export default function InputManualPage() {
                 Kembali
               </Button>
               <div>
-                <CardTitle className="text-xl">Input Manual Transaksi</CardTitle>
+                <CardTitle className="text-xl">
+                  Input Manual Transaksi 
+                  <Badge variant="secondary" className="ml-2 text-xs">v2.0</Badge>
+                </CardTitle>
                 <CardDescription>
                   Jenis Dana: <Badge className="ml-1">{selectedJenis?.namaDana}</Badge>
+                  {" • "}Data: {wargaList.length} Kepala Keluarga
+                </CardDescription>
                 </CardDescription>
               </div>
             </div>
@@ -262,13 +302,16 @@ export default function InputManualPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Pilih Warga */}
             <div className="space-y-3">
-              <Label htmlFor="warga">Pilih Warga</Label>
+              <Label htmlFor="warga">
+                Pilih Kepala Keluarga 
+                <Badge variant="outline" className="ml-2 text-xs">Hanya Kepala Keluarga</Badge>
+              </Label>
               
               {/* Search Warga */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
-                  placeholder="Cari nama warga atau NIK..."
+                  placeholder="Cari nama kepala keluarga atau NIK..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -277,17 +320,25 @@ export default function InputManualPage() {
               
               <Select value={formData.selectedWarga} onValueChange={(value) => setFormData({ ...formData, selectedWarga: value })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih warga" />
+                  <SelectValue placeholder="-- Pilih Kepala Keluarga --" />
                 </SelectTrigger>
                 <SelectContent className="max-h-48">
-                  {filteredWarga.map((warga) => (
-                    <SelectItem key={warga.id} value={warga.id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{warga.namaLengkap}</span>
-                        <span className="text-xs text-muted-foreground">NIK: {warga.nik}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {loading ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
+                  ) : filteredWarga.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">
+                      Tidak ada kepala keluarga ditemukan
+                    </div>
+                  ) : (
+                    filteredWarga.map((warga) => (
+                      <SelectItem key={warga.id} value={warga.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{warga.namaLengkap}</span>
+                          <span className="text-xs text-muted-foreground">NIK: {warga.nik} • Rumah: {warga.alamatRumah || 'N/A'}</span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

@@ -97,6 +97,11 @@ export async function getWargaByBarcode(barcode: string): Promise<Warga | null> 
   }
 }
 
+// Get hanya kepala keluarga (untuk input transaksi)
+export async function getKepalaKeluarga(): Promise<Warga[]> {
+  return apiRequest<Warga[]>("warga/kepala-keluarga")
+}
+
 /* ==================== PETUGAS ==================== */
 export async function getAllPetugas(): Promise<Petugas[]> {
   const data = await apiRequest<any[]>("petugas")

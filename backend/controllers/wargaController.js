@@ -160,3 +160,43 @@ export const deleteWarga = async (req, res) => {
     res.status(500).json({ success: false, message: "Gagal menghapus warga", error: error.message });
   }
 };
+
+// Get hanya kepala keluarga (untuk input transaksi)
+export const getKepalaKeluarga = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        w.id_warga AS id, 
+        w.nama_lengkap AS namaLengkap, 
+        w.nik, 
+        w.nomor_hp AS nomorHp,
+        w.jenis_kelamin AS jenisKelaminDB, 
+        w.status_aktif AS statusAktif, 
+        r.alamat AS alamatRumah, 
+        r.rt, 
+        r.rw, 
+        w.id_rumah AS idRumah
+      FROM warga w 
+      INNER JOIN rumah r ON w.id_rumah = r.id_rumah
+      WHERE w.id_warga = r.id_kepala_keluarga
+        AND w.status_aktif = 'Aktif'
+      ORDER BY w.nama_lengkap ASC
+    `);
+    
+    // Mapping jenis kelamin dari database ke frontend
+    const mappedRows = rows.map(row => ({
+      ...row,
+      jenisKelamin: row.jenisKelaminDB === "L" ? "Laki-laki" : row.jenisKelaminDB === "P" ? "Perempuan" : row.jenisKelaminDB,
+      jenisKelaminDB: undefined // Remove the temporary field
+    }));
+    
+    res.json({ success: true, data: mappedRows });
+  } catch (error) {
+    console.error("Error getting kepala keluarga:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Gagal mengambil data kepala keluarga", 
+      error: error.message 
+    });
+  }
+};

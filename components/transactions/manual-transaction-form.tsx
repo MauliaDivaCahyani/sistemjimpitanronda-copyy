@@ -17,7 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { QrCode, Coins, Search } from "lucide-react"
-import { getAllWarga, getAllJenisDana } from "@/lib/database"
+import { getKepalaKeluarga, getAllJenisDana } from "@/lib/database"
 import type { Warga, JenisDana } from "@/types/database"
 import { toast } from "@/hooks/use-toast"
 
@@ -96,18 +96,21 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
 
   const fetchData = async () => {
     try {
+      console.log('[MODAL-FORM] Fetching kepala keluarga...')
       const [wargaData, jenisDanaData] = await Promise.all([
-        getAllWarga(),
+        getKepalaKeluarga(),
         getAllJenisDana(),
       ])
+      console.log('[MODAL-FORM] Kepala keluarga received:', wargaData.length, wargaData)
       const activeWarga = wargaData.filter((w: Warga) => w.statusAktif === "Aktif")
       const activeJenis = jenisDanaData.filter((j: JenisDana) => j.isActive)
       
+      console.log('[MODAL-FORM] Active kepala keluarga:', activeWarga.length, activeWarga.map(w => w.namaLengkap))
       setWargaList(activeWarga)
       setFilteredWarga(activeWarga)
       setJenisDanaList(activeJenis)
     } catch (error) {
-      console.error("Gagal memuat data:", error)
+      console.error('[MODAL-FORM] Gagal memuat data:', error)
       toast({
         title: "Error",
         description: "Gagal memuat data",
@@ -213,7 +216,7 @@ export function ManualTransactionForm({ isOpen, onClose, onSubmit }: ManualTrans
             </div>
             
             <DialogFooter>
-              <Button variant="outline" onClick={onClose}>Kembali</Button>
+              <Button variant="outline" onClick={onClose}>Tutup</Button>
             </DialogFooter>
           </div>
         )
