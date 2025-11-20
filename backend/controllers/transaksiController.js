@@ -107,8 +107,17 @@ export const createTransaksi = async (req, res) => {
       });
     }
 
+    // Get id_rumah dari warga
+    const [wargaRows] = await pool.query(
+      'SELECT id_rumah FROM warga WHERE id_warga = ?',
+      [id_warga]
+    );
+    
+    const idRumah = wargaRows.length > 0 ? wargaRows[0].id_rumah : null;
+
     // Set default values
     const tanggalSetor = tanggal_setor || new Date().toISOString().split('T')[0];
+    const tanggalBayar = tanggalSetor; // tanggal_bayar sama dengan tanggal_setor
     const statusJimpitan = status_jimpitan || 'lunas';
 
     const [result] = await pool.query(`
@@ -116,18 +125,24 @@ export const createTransaksi = async (req, res) => {
         id_warga, 
         id_jenis_dana, 
         id_user, 
+        id_rumah,
         tanggal_setor, 
+        tanggal_bayar,
         waktu_input, 
-        nominal, 
+        nominal,
+        jumlah_bayar,
         status_jimpitan,
         status
-      ) VALUES (?, ?, ?, ?, NOW(), ?, ?, 'Berhasil')
+      ) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, 'Berhasil')
     `, [
       id_warga, 
       id_jenis_dana, 
-      id_user, 
-      tanggalSetor, 
-      nominal, 
+      id_user,
+      idRumah,
+      tanggalSetor,
+      tanggalBayar,
+      nominal,
+      nominal, // jumlah_bayar sama dengan nominal
       statusJimpitan
     ]);
     
@@ -154,14 +169,25 @@ export const updateTransaksi = async (req, res) => {
       status_jimpitan 
     } = req.body;
     
+    // Get id_rumah dari warga
+    const [wargaRows] = await pool.query(
+      'SELECT id_rumah FROM warga WHERE id_warga = ?',
+      [id_warga]
+    );
+    
+    const idRumah = wargaRows.length > 0 ? wargaRows[0].id_rumah : null;
+    
     const [result] = await pool.query(`
       UPDATE transaksi 
       SET 
         id_warga = ?, 
         id_jenis_dana = ?, 
-        id_user = ?, 
-        tanggal_setor = ?, 
-        nominal = ?, 
+        id_user = ?,
+        id_rumah = ?,
+        tanggal_setor = ?,
+        tanggal_bayar = ?,
+        nominal = ?,
+        jumlah_bayar = ?,
         status_jimpitan = ?,
         status = 'Berhasil',
         updated_at = NOW() 
@@ -169,9 +195,12 @@ export const updateTransaksi = async (req, res) => {
     `, [
       id_warga, 
       id_jenis_dana, 
-      id_user, 
-      tanggal_setor, 
-      nominal, 
+      id_user,
+      idRumah,
+      tanggal_setor,
+      tanggal_setor, // tanggal_bayar sama dengan tanggal_setor
+      nominal,
+      nominal, // jumlah_bayar sama dengan nominal
       status_jimpitan, 
       id
     ]);

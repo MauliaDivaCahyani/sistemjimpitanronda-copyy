@@ -92,6 +92,14 @@ export const createPetugas = async (req, res) => {
       [idWarga, jabatan || null, dbRole, status, username, hashedPassword, idKelompokRonda || null]
     )
 
+    // Update password_custom di tabel warga dengan password yang sama
+    await pool.query(
+      "UPDATE warga SET password_custom = ? WHERE id_warga = ?",
+      [hashedPassword, idWarga]
+    )
+
+    console.log("DEBUG CREATE PETUGAS - Password synced to warga table for id_warga:", idWarga)
+
     res.status(201).json({
       success: true,
       message: `Petugas dengan role ${dbRole} berhasil ditambahkan`,
@@ -149,9 +157,10 @@ export const updatePetugas = async (req, res) => {
       "UPDATE petugas SET jabatan = ?, role = ?, status = ?, username = ?, id_kelompok_ronda = ?, updated_at = NOW()"
     const queryParams = [jabatan || null, dbRole, status, username, idKelompokRonda || null]
 
+    let hashedPassword = null;
     if (password && password.trim() !== "") {
       // Hash password dengan MD5 jika ada perubahan
-      const hashedPassword = hashPasswordMD5(password)
+      hashedPassword = hashPasswordMD5(password)
       updateQuery += ", password = ?"
       queryParams.push(hashedPassword)
     }
@@ -168,6 +177,22 @@ export const updatePetugas = async (req, res) => {
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ success: false, message: "Petugas tidak ditemukan" })
+    }
+
+    // Jika password diubah, sync ke tabel warga juga
+    if (hashedPassword) {
+      const [petugasData] = await pool.query(
+        "SELECT id_warga FROM petugas WHERE id_petugas = ?",
+        [id]
+      );
+      
+      if (petugasData.length > 0 && petugasData[0].id_warga) {
+        await pool.query(
+          "UPDATE warga SET password_custom = ? WHERE id_warga = ?",
+          [hashedPassword, petugasData[0].id_warga]
+        );
+        console.log("DEBUG UPDATE PETUGAS - Password synced to warga table for id_warga:", petugasData[0].id_warga);
+      }
     }
 
     console.log("DEBUG UPDATE PETUGAS - Success! Affected rows:", result.affectedRows)

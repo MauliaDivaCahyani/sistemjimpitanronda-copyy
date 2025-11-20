@@ -39,27 +39,31 @@ export const getDashboardStats = async (req, res) => {
     `, [currentMonth, currentYear])
     const totalDanaBulanIni = parseFloat(danaBulanIniRows[0].total) || 0
 
-    // Get statistik pembayaran bulan ini
-    // Hitung berdasarkan KEPALA KELUARGA (per rumah), bukan total warga
-    // Karena transaksi dihitung per rumah (1 rumah = 1 kepala keluarga)
+    // Get statistik pembayaran HARI INI (bukan bulan ini)
+    // Hitung berdasarkan RUMAH yang sudah bayar HARI INI
     
-    // Hitung total kepala keluarga (total rumah)
-    const totalKepalaKeluarga = totalRumah
+    // Hitung total rumah yang memiliki kepala keluarga
+    const [totalRumahKKRows] = await pool.query(`
+      SELECT COUNT(*) as total
+      FROM rumah
+      WHERE id_kepala_keluarga IS NOT NULL
+    `)
+    const totalRumahDenganKK = totalRumahKKRows[0].total
     
-    // Hitung berapa kepala keluarga yang sudah bayar bulan ini
-    const [kepalaKeluargaBayarRows] = await pool.query(`
-      SELECT COUNT(DISTINCT w.id_warga) as total
+    // Hitung berapa rumah yang sudah bayar HARI INI
+    // (ada minimal 1 transaksi hari ini dari warga yang tinggal di rumah tersebut)
+    const [rumahBayarRows] = await pool.query(`
+      SELECT COUNT(DISTINCT r.id_rumah) as total
       FROM transaksi t
       INNER JOIN warga w ON t.id_warga = w.id_warga
       INNER JOIN rumah r ON w.id_rumah = r.id_rumah
-      WHERE w.id_warga = r.id_kepala_keluarga
-        AND MONTH(t.tanggal_setor) = ? 
-        AND YEAR(t.tanggal_setor) = ?
-    `, [currentMonth, currentYear])
-    const kepalaKeluargaSudahBayar = kepalaKeluargaBayarRows[0].total
+      WHERE DATE(t.tanggal_setor) = ?
+        AND r.id_kepala_keluarga IS NOT NULL
+    `, [today])
+    const rumahSudahBayar = rumahBayarRows[0].total
 
-    // Hitung persentase berdasarkan kepala keluarga
-    const persenSudahBayar = totalKepalaKeluarga > 0 ? Math.round((kepalaKeluargaSudahBayar / totalKepalaKeluarga) * 100) : 0
+    // Hitung persentase berdasarkan rumah
+    const persenSudahBayar = totalRumahDenganKK > 0 ? Math.round((rumahSudahBayar / totalRumahDenganKK) * 100) : 0
     const persenBelumBayar = 100 - persenSudahBayar
 
     // Get transaksi hari ini
@@ -75,8 +79,8 @@ export const getDashboardStats = async (req, res) => {
       totalRumah,
       totalDanaHariIni,
       totalDanaBulanIni,
-      totalKepalaKeluarga,
-      kepalaKeluargaSudahBayar,
+      totalRumahDenganKK,
+      rumahSudahBayar,
       persenSudahBayar,
       persenBelumBayar,
       transaksiHariIni
@@ -90,8 +94,8 @@ export const getDashboardStats = async (req, res) => {
         totalDanaHariIni,
         totalDanaBulanIni,
         statistikPembayaran: {
-          sudahBayar: kepalaKeluargaSudahBayar,
-          belumBayar: totalKepalaKeluarga - kepalaKeluargaSudahBayar,
+          sudahBayar: rumahSudahBayar,
+          belumBayar: totalRumahDenganKK - rumahSudahBayar,
           persenSudahBayar,
           persenBelumBayar
         },

@@ -1,5 +1,11 @@
 // backend/controllers/wargaController.js
 import { pool } from "../config/database.js";
+import crypto from "crypto";
+
+// Helper: Hash password with MD5
+const hashPasswordMD5 = (password) => {
+  return crypto.createHash('md5').update(password).digest('hex');
+};
 
 export const getAllWarga = async (req, res) => {
   try {
@@ -96,9 +102,12 @@ export const createWarga = async (req, res) => {
     
     console.log("DEBUG CREATE WARGA - jenisKelamin mapped to DB:", jenisKelaminDB);
     
+    // Hash password default "1234" untuk warga
+    const defaultPassword = hashPasswordMD5("1234");
+    
     const [result] = await pool.query(
-      "INSERT INTO warga (id_rumah, nama_lengkap, nik, nomor_hp, jenis_kelamin, status_aktif) VALUES (?, ?, ?, ?, ?, ?)",
-      [idRumah || null, namaLengkap.trim(), nik || null, nomorHp || null, jenisKelaminDB, statusAktif || "Aktif"]
+      "INSERT INTO warga (id_rumah, nama_lengkap, nik, nomor_hp, jenis_kelamin, status_aktif, password_custom) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [idRumah || null, namaLengkap.trim(), nik || null, nomorHp || null, jenisKelaminDB, statusAktif || "Aktif", defaultPassword]
     );
     
     console.log("DEBUG CREATE WARGA - Insert result:", result);

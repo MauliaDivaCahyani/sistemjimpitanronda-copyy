@@ -101,8 +101,8 @@ export const generateLaporan = async (req, res) => {
         COUNT(DISTINCT r.id_rumah) as rumahSudahBayar
       FROM transaksi t
       INNER JOIN warga w ON t.id_warga = w.id_warga
-      INNER JOIN rumah r ON r.id_kepala_keluarga = w.id_warga
-      WHERE 1=1 ${dateFilter}
+      INNER JOIN rumah r ON w.id_rumah = r.id_rumah
+      WHERE r.id_kepala_keluarga IS NOT NULL ${dateFilter}
     `;
     
     const [summaryRows] = await pool.query(summaryQuery, params);
@@ -127,7 +127,9 @@ export const generateLaporan = async (req, res) => {
         CASE WHEN COUNT(t.id_transaksi) > 0 THEN 1 ELSE 0 END as sudahBayar
       FROM rumah r
       INNER JOIN warga w ON r.id_kepala_keluarga = w.id_warga
-      LEFT JOIN transaksi t ON w.id_warga = t.id_warga ${dateFilter.replace('t.tanggal_setor', 't.tanggal_setor')}
+      LEFT JOIN warga w2 ON r.id_rumah = w2.id_rumah
+      LEFT JOIN transaksi t ON w2.id_warga = t.id_warga ${dateFilter.replace('AND ', 'AND ')}
+      WHERE r.id_kepala_keluarga IS NOT NULL
       GROUP BY r.id_rumah, r.alamat, w.nama_lengkap, w.nik, r.rt, r.rw
       ORDER BY r.id_rumah ASC
     `;
