@@ -119,8 +119,9 @@ export const createTransaksi = async (req, res) => {
         tanggal_setor, 
         waktu_input, 
         nominal, 
-        status_jimpitan
-      ) VALUES (?, ?, ?, ?, NOW(), ?, ?)
+        status_jimpitan,
+        status
+      ) VALUES (?, ?, ?, ?, NOW(), ?, ?, 'Berhasil')
     `, [
       id_warga, 
       id_jenis_dana, 
@@ -161,7 +162,8 @@ export const updateTransaksi = async (req, res) => {
         id_user = ?, 
         tanggal_setor = ?, 
         nominal = ?, 
-        status_jimpitan = ?, 
+        status_jimpitan = ?,
+        status = 'Berhasil',
         updated_at = NOW() 
       WHERE id_transaksi = ?
     `, [
